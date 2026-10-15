@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pedidos do Mercadinho</title>
+<style>
+:root{--bg:#f4f1e8;--card:#fffdf7;--tx:#1f2a22;--mu:#6c7468;--ac:#2f6b3a;--ac2:#e3eddc;--bd:#d9d4c3;--rd:#b3402f;--yl:#f2c94c;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#151a16;--card:#1e251f;--tx:#eef0e6;--mu:#9aa595;--ac:#6fbf7b;--ac2:#27352a;--bd:#34403a;--rd:#e8806f}}
+:root[data-theme="dark"]{--bg:#151a16;--card:#1e251f;--tx:#eef0e6;--mu:#9aa595;--ac:#6fbf7b;--ac2:#27352a;--bd:#34403a;--rd:#e8806f}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 "Trebuchet MS","Segoe UI",system-ui,sans-serif;padding-bottom:80px}
+h1{font:700 22px/1 Georgia,"Times New Roman",serif;margin:0;padding:16px 16px 8px;letter-spacing:.2px}
+h2{font:700 18px Georgia,serif;margin:4px 0 10px}
+main{max-width:720px;margin:0 auto;padding:8px 14px}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:2px solid var(--ac);padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
+nav button{flex:1;border:0;background:none;color:var(--mu);padding:12px 2px;font:600 13px inherit;font-family:inherit;position:relative}
+nav button.on{color:var(--ac);background:var(--ac2)}
+nav b{position:absolute;top:4px;right:calc(50% - 26px);background:var(--rd);color:#fff;border-radius:9px;font-size:11px;padding:1px 6px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:10px}
+.row{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.mu{color:var(--mu);font-size:14px}
+input,select,textarea{width:100%;padding:11px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit;margin:4px 0 8px}
+label{font-size:14px;color:var(--mu)}
+button.b{background:var(--ac);color:#fff;border:0;border-radius:8px;padding:11px 16px;font:700 15px inherit;font-family:inherit;cursor:pointer}
+button.s{background:var(--ac2);color:var(--ac)}
+button.d{background:none;color:var(--rd);padding:6px 8px}
+button.w{width:100%}
+.q{display:flex;align-items:center;gap:8px}
+.q button{width:36px;height:36px;border-radius:50%;border:1px solid var(--ac);background:var(--card);color:var(--ac);font-size:20px;font-weight:700}
+.tot{font:700 20px Georgia,serif}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tag{display:inline-block;padding:2px 8px;border-radius:6px;background:var(--yl);color:#333;font-size:12px;font-weight:700}
+.tag.ok{background:var(--ac);color:#fff}
+a{color:var(--ac)}
+:focus-visible{outline:3px solid var(--yl);outline-offset:2px}
+.ph{width:56px;height:56px;border-radius:8px;object-fit:cover;float:left;margin-right:10px;background:var(--ac2);display:flex;align-items:center;justify-content:center;font-size:26px}
+.it{display:flow-root}
+#pv .ph{float:none;width:110px;height:110px;margin:4px 0}
+@media print{h1,nav,button,a.b,.noprint{display:none!important}body{background:#fff;color:#000;padding:0;font-size:13px}body.pr .card:not(.pp){display:none}.pp{break-inside:avoid;border:1px dashed #000;background:#fff;color:#000;margin-bottom:14px}.pp .mu,.pp a{color:#000}}
+</style></head><body>
+<h1>🛒 Pedidos do Mercadinho <button class="d" id="lo" hidden onclick="sb.auth.signOut().then(()=>location.reload())">Sair</button></h1>
+<main id="v"></main>
+<nav id="nav"></nav>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+let S={products:[],clients:[],orders:[],cart:{}};
+try{S=Object.assign(S,JSON.parse(localStorage.getItem('mk')||'{}'))}catch(e){}
+if(!S.products.length)S.products=[{id:'a1',n:'Arroz 5kg',p:28.9,u:'un'},{id:'a2',n:'Feijão carioca 1kg',p:8.5,u:'un'},{id:'a3',n:'Banana prata',p:6.9,u:'kg'},{id:'a4',n:'Leite integral 1L',p:5.2,u:'un'}];
+/* ===== SUPABASE: cole aqui os dados do seu projeto (Project Settings > API) ===== */
+const SB_URL='COLE_AQUI_A_PROJECT_URL', SB_KEY='COLE_AQUI_A_ANON_PUBLIC_KEY';
+const sb=(window.supabase&&SB_URL.startsWith('http'))?window.supabase.createClient(SB_URL,SB_KEY):null;
+const TB=['products','clients','orders'];let snap={},logged=false,chain=Promise.resolve();
+const loc=()=>{try{localStorage.setItem('mk',JSON.stringify(S))}catch(e){}};
+const save=()=>{loc();if(sb&&logged)chain=chain.then(push).catch(fail)};
+const fail=e=>alert('Falha ao sincronizar: '+(e&&e.message||e));
+async function pull(){
+  for(const t of TB){
+    const {data,error}=await sb.from(t).select('data');
+    if(error)return fail(error);
+    S[t]=data.map(r=>r.data);
+    snap[t]=Object.fromEntries(S[t].map(r=>[r.id,JSON.stringify(r)]));
+  }
+  S.orders.sort((a,b)=>String(b.date).localeCompare(String(a.date)));loc();
+}
+async function push(){
+  for(const t of TB){
+    const cur=Object.fromEntries(S[t].map(r=>[r.id,JSON.stringify(r)])),old=snap[t]||{};
+    const up=S[t].filter(r=>cur[r.id]!==old[r.id]).map(r=>({id:r.id,data:r,updated_at:new Date().toISOString()}));
+    const del=Object.keys(old).filter(id=>!(id in cur));
+    if(up.length){const {error}=await sb.from(t).upsert(up);if(error)throw error}
+    if(del.length){const {error}=await sb.from(t).delete().in('id',del);if(error)throw error}
+    snap[t]=cur;
+  }
+}
+function loginView(){
+  $('#nav').innerHTML='';
+  $('#v').innerHTML='<div class="card"><h2>Entrar</h2><label>E-mail</label><input id="le" type="email" autocomplete="username"><label>Senha</label><input id="lp" type="password" autocomplete="current-password"><button class="b w" onclick="login()">Entrar</button></div>';
+}
+async function login(){
+  const {error}=await sb.auth.signInWithPassword({email:$('#le').value.trim(),password:$('#lp').value});
+  if(error)return alert('Não foi possível entrar: '+error.message);
+  init();
+}
+async function init(){
+  if(!sb)return render();
+  const {data}=await sb.auth.getSession();
+  if(!data.session)return loginView();
+  logged=true;$('#lo').hidden=false;await pull();render();
+}
+document.addEventListener('visibilitychange',async()=>{
+  if(document.hidden||!logged||(tab!='ped'&&tab!='loja'))return;
+  await chain;await pull();render();
+});
+const R=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+let tab='loja',q='',editP=null,editC=null,co={cid:'',addr:'',loc:null,pay:'Dinheiro',cash:'',obs:''};
+const items=()=>Object.entries(S.cart).map(([id,qt])=>({p:S.products.find(x=>x.id==id),qt})).filter(x=>x.p&&x.qt>0);
+const total=()=>items().reduce((s,x)=>s+x.p.p*x.qt,0);
+const count=()=>items().reduce((s,x)=>s+x.qt,0);
+const go=t=>{tab=t;render()};
+function getLoc(cb){
+  if(!navigator.geolocation)return alert('Este aparelho não oferece localização.');
+  navigator.geolocation.getCurrentPosition(p=>cb({lat:+p.coords.latitude.toFixed(6),lng:+p.coords.longitude.toFixed(6)}),()=>alert('Não foi possível obter a localização. Permita o acesso e tente de novo.'),{enableHighAccuracy:true,timeout:15000});
+}
+const mapUrl=l=>`https://www.google.com/maps?q=${l.lat},${l.lng}`;
+function render(){
+  const T={loja:'Loja',cart:'Carrinho',prod:'Produtos',cli:'Clientes',ped:'Pedidos'};
+  $('#nav').innerHTML=Object.entries(T).map(([k,v])=>`<button class="${tab==k?'on':''}" onclick="go('${k}')">${v}${k=='cart'&&count()?`<b>${count()}</b>`:''}</button>`).join('');
+  $('#v').innerHTML=({loja:vLoja,cart:vCart,prod:vProd,cli:vCli,ped:vPed})[tab]();
+  window.scrollTo(0,0);
+}
+const th=p=>p.img?`<img class="ph" alt="" src="${p.img}">`:`<div class="ph">🛒</div>`;
+let pImg;
+function pickImg(inp){
+  const f=inp.files[0];if(!f)return;
+  const im=new Image(),u=URL.createObjectURL(f);
+  im.onload=()=>{const k=Math.min(1,240/Math.max(im.width,im.height)),c=document.createElement('canvas');
+    c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+    pImg=c.toDataURL('image/jpeg',.7);URL.revokeObjectURL(u);$('#pv').innerHTML=`<img class="ph" alt="" src="${pImg}">`;};
+  im.onerror=()=>alert('Não foi possível ler essa imagem.');im.src=u;
+}
+function printO(id){
+  const c=[...document.querySelectorAll('.ord')].filter(e=>id?e.id=='o-'+id:!e.querySelector('.tag.ok'));
+  if(!c.length)return alert('Nenhum pedido para imprimir.');
+  c.forEach(e=>e.classList.add('pp'));document.body.classList.add('pr');
+  window.onafterprint=()=>{document.body.classList.remove('pr');c.forEach(e=>e.classList.remove('pp'))};
+  window.print();
+}
+/* LOJA */
+function listHtml(){
+  const l=S.products.filter(p=>p.n.toLowerCase().includes(q.toLowerCase()));
+  if(!l.length)return '<p class="mu">Nenhum produto encontrado. Cadastre na aba Produtos.</p>';
+  return l.map(p=>`<div class="card row"><div class="it">${th(p)}<b>${esc(p.n)}</b><div class="mu">${R(p.p)} / ${esc(p.u)}</div></div>
+  <div class="q"><button onclick="add('${p.id}',-1)" aria-label="Menos">−</button><b>${S.cart[p.id]||0}</b><button onclick="add('${p.id}',1)" aria-label="Mais">+</button></div></div>`).join('');
+}
+function vLoja(){
+  return `<input placeholder="Buscar produto..." value="${esc(q)}" oninput="q=this.value;$('#pl').innerHTML=listHtml()"><div id="pl">${listHtml()}</div>
+  ${count()?`<button class="b w" onclick="go('cart')">Ver carrinho · ${count()} itens · ${R(total())}</button>`:''}`;
+}
+function add(id,d){S.cart[id]=Math.max(0,(S.cart[id]||0)+d);if(!S.cart[id])delete S.cart[id];save();render();}
+/* CARRINHO */
+function vCart(){
+  const it=items();
+  if(!it.length)return '<div class="card"><h2>Carrinho vazio</h2><p class="mu">Escolha produtos na aba Loja.</p><button class="b" onclick="go(\'loja\')">Ir para a loja</button></div>';
+  return `<h2>Carrinho</h2>${it.map(x=>`<div class="card row"><div class="it">${th(x.p)}<b>${esc(x.p.n)}</b><div class="mu">${R(x.p.p)} × ${x.qt} = ${R(x.p.p*x.qt)}</div></div>
+  <div class="q"><button onclick="add('${x.p.id}',-1)">−</button><b>${x.qt}</b><button onclick="add('${x.p.id}',1)">+</button></div></div>`).join('')}
+  <div class="card"><h2>Entrega e pagamento</h2>
+  <label>Cliente</label><select onchange="pick(this.value)"><option value="">Selecione...</option>${S.clients.map(c=>`<option value="${c.id}" ${co.cid==c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select>
+  ${S.clients.length?'':'<p class="mu">Nenhum cliente. <a href="#" onclick="go(\'cli\');return false">Cadastrar cliente</a></p>'}
+  <label>Endereço de entrega</label><textarea rows="2" oninput="co.addr=this.value">${esc(co.addr)}</textarea>
+  <button class="b s w" onclick="getLoc(l=>{co.loc=l;render()})">📍 ${co.loc?'Atualizar localização':'Usar minha localização'}</button>
+  ${co.loc?`<p class="mu">Local: <a target="_blank" rel="noopener" href="${mapUrl(co.loc)}">${co.loc.lat}, ${co.loc.lng}</a></p>`:''}
+  <label style="display:block;margin-top:10px">Forma de pagamento</label>
+  <select onchange="co.pay=this.value;render()">${['Dinheiro','Pix','Cartão'].map(x=>`<option ${co.pay==x?'selected':''}>${x}</option>`).join('')}</select>
+  ${co.pay=='Dinheiro'?`<label>Troco para quanto? (deixe vazio se não precisa)</label><input type="number" inputmode="decimal" min="0" step="0.01" value="${esc(co.cash)}" oninput="co.cash=this.value;trocoTxt()"><p id="tr" class="mu"></p>`:''}
+  <label>Observações</label><input value="${esc(co.obs)}" oninput="co.obs=this.value" placeholder="Ex.: portão azul">
+  <div class="row"><span>Total</span><span class="tot">${R(total())}</span></div><br>
+  <button class="b w" onclick="finish()">Finalizar pedido</button></div>`;
+}
+setTimeout(()=>{},0);
+function trocoTxt(){const e=$('#tr');if(!e)return;const c=parseFloat(co.cash);if(!c){e.textContent='';return}
+  e.textContent=c<total()?'⚠️ O valor é menor que o total.':'Troco a levar: '+R(c-total());}
+function pick(id){co.cid=id;const c=S.clients.find(x=>x.id==id);if(c){co.addr=c.a;co.loc=c.loc||null}render();}
+function finish(){
+  const it=items(),c=S.clients.find(x=>x.id==co.cid),t=total(),cash=parseFloat(co.cash)||0;
+  if(!c)return alert('Selecione o cliente.');
+  if(!co.addr.trim())return alert('Informe o endereço de entrega.');
+  if(co.pay=='Dinheiro'&&cash&&cash<t)return alert('O valor para troco é menor que o total.');
+  S.orders.unshift({id:uid(),date:new Date().toISOString(),cn:c.n,ph:c.t,addr:co.addr.trim(),loc:co.loc,
+    items:it.map(x=>({n:x.p.n,u:x.p.u,p:x.p.p,q:x.qt})),total:t,pay:co.pay,cash:co.pay=='Dinheiro'?cash:0,
+    troco:co.pay=='Dinheiro'&&cash?cash-t:0,obs:co.obs,done:false});
+  S.cart={};co={cid:'',addr:'',loc:null,pay:'Dinheiro',cash:'',obs:''};save();go('ped');
+}
+/* PRODUTOS */
+function vProd(){
+  const p=S.products.find(x=>x.id==editP)||{};
+  return `<div class="card"><h2>${p.id?'Editar produto':'Novo produto'}</h2>
+  <label>Nome</label><input id="pn" value="${esc(p.n)}">
+  <div class="g2"><div><label>Preço (R$)</label><input id="pp" type="number" inputmode="decimal" step="0.01" min="0" value="${p.p??''}"></div>
+  <div><label>Unidade</label><select id="pu">${['un','kg','g','L','pct','cx'].map(u=>`<option ${p.u==u?'selected':''}>${u}</option>`).join('')}</select></div></div>
+  <label>Foto do produto</label><input id="pf" type="file" accept="image/*" onchange="pickImg(this)">
+  <div id="pv">${(pImg??p.img)?`<img class="ph" alt="" src="${pImg??p.img}">`:''}</div>
+  ${(pImg??p.img)?`<button class="d" onclick="pImg='';$('#pv').innerHTML=''">Remover foto</button>`:''}
+  <button class="b w" onclick="saveP()">Salvar produto</button></div>
+  ${S.products.map(x=>`<div class="card row"><div class="it">${th(x)}<b>${esc(x.n)}</b><div class="mu">${R(x.p)} / ${esc(x.u)}</div></div>
+  <div><button class="b s" onclick="editP='${x.id}';pImg=undefined;render()">Editar</button><button class="d" onclick="delP('${x.id}')">Excluir</button></div></div>`).join('')}`;
+}
+function saveP(){
+  const n=$('#pn').value.trim(),pr=parseFloat($('#pp').value);
+  if(!n||isNaN(pr))return alert('Informe nome e preço.');
+  const o=S.products.find(x=>x.id==editP);
+  const im=pImg!==undefined?pImg:((o&&o.img)||'');
+  if(o){o.n=n;o.p=pr;o.u=$('#pu').value;o.img=im}else S.products.push({id:uid(),n,p:pr,u:$('#pu').value,img:im});
+  editP=null;pImg=undefined;save();render();
+}
+function delP(id){S.products=S.products.filter(x=>x.id!=id);delete S.cart[id];save();render();}
+/* CLIENTES */
+let cLoc=null;
+function vCli(){
+  const c=S.clients.find(x=>x.id==editC)||{};
+  return `<div class="card"><h2>${c.id?'Editar cliente':'Novo cliente'}</h2>
+  <label>Nome</label><input id="cn" value="${esc(c.n)}">
+  <label>Telefone / WhatsApp</label><input id="ct" type="tel" value="${esc(c.t)}" placeholder="(93) 99999-9999">
+  <label>Endereço (rua, número, bairro, referência)</label><textarea id="ca" rows="2">${esc(c.a)}</textarea>
+  <button class="b s w" onclick="getLoc(l=>{cLoc=l;$('#cl').textContent='📍 '+l.lat+', '+l.lng})">📍 Capturar localização atual</button>
+  <p id="cl" class="mu">${(cLoc||c.loc)?'📍 '+(cLoc||c.loc).lat+', '+(cLoc||c.loc).lng:''}</p>
+  <button class="b w" onclick="saveC()">Salvar cliente</button></div>
+  ${S.clients.map(x=>`<div class="card row"><div><b>${esc(x.n)}</b><div class="mu">${esc(x.t)}<br>${esc(x.a)}</div></div>
+  <div><button class="b s" onclick="editC='${x.id}';cLoc=null;render()">Editar</button><button class="d" onclick="S.clients=S.clients.filter(y=>y.id!='${x.id}');save();render()">Excluir</button></div></div>`).join('')}`;
+}
+function saveC(){
+  const n=$('#cn').value.trim(),a=$('#ca').value.trim();
+  if(!n||!a)return alert('Informe nome e endereço.');
+  const o=S.clients.find(x=>x.id==editC),d={n,t:$('#ct').value.trim(),a};
+  if(o){Object.assign(o,d);if(cLoc)o.loc=cLoc}else S.clients.push({id:uid(),...d,loc:cLoc});
+  editC=null;cLoc=null;save();render();
+}
+/* PEDIDOS */
+function vPed(){
+  if(!S.orders.length)return '<div class="card"><h2>Nenhum pedido ainda</h2><p class="mu">Os pedidos finalizados aparecem aqui.</p></div>';
+  return `<button class="b s w" style="margin-bottom:10px" onclick="printO()">🖨️ Imprimir pedidos pendentes</button>`+S.orders.map(o=>{
+    const msg=`Pedido de ${o.cn}\n`+o.items.map(i=>`${i.q}x ${i.n} - ${R(i.p*i.q)}`).join('\n')+`\nTotal: ${R(o.total)}\nPagamento: ${o.pay}`+(o.troco?` (troco para ${R(o.cash)}: levar ${R(o.troco)})`:'')+`\nEndereço: ${o.addr}`+(o.loc?`\nLocalização: ${mapUrl(o.loc)}`:'')+(o.obs?`\nObs: ${o.obs}`:'');
+    const ph=String(o.ph||'').replace(/\D/g,'');
+    return `<div class="card ord" id="o-${o.id}"><div class="row"><b>${esc(o.cn)}</b><span class="tag ${o.done?'ok':''}">${o.done?'Entregue':'Pendente'}</span></div>
+    <div class="mu">${new Date(o.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}</div>
+    <p>${o.items.map(i=>`${i.q}× ${esc(i.n)}`).join('<br>')}</p>
+    <div class="mu">${esc(o.addr)}${o.loc?` · <a target="_blank" rel="noopener" href="${mapUrl(o.loc)}">ver no mapa</a>`:''}</div>
+    <div class="row" style="margin-top:8px"><span class="mu">${o.pay}${o.troco?` · levar troco ${R(o.troco)} (de ${R(o.cash)})`:''}</span><span class="tot">${R(o.total)}</span></div>
+    ${o.obs?`<div class="mu">Obs: ${esc(o.obs)}</div>`:''}
+    <div class="row" style="margin-top:10px;justify-content:flex-start;flex-wrap:wrap">
+    <button class="b s" onclick="printO('${o.id}')">🖨️ Imprimir</button>
+    <button class="b s" onclick="tg('${o.id}')">${o.done?'Reabrir':'Marcar entregue'}</button>
+    ${ph?`<a class="b s" style="text-decoration:none;border-radius:8px;padding:11px 16px;font-weight:700" target="_blank" rel="noopener" href="https://wa.me/55${ph}?text=${encodeURIComponent(msg)}">WhatsApp</a>`:''}
+    <button class="d" onclick="S.orders=S.orders.filter(x=>x.id!='${o.id}');save();render()">Excluir</button></div></div>`}).join('');
+}
+function tg(id){const o=S.orders.find(x=>x.id==id);o.done=!o.done;save();render();}
+init();
+</script></body></html>
