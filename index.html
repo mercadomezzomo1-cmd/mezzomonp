@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Pedidos do Mercadinho</title>
+<title>Mercado Mezzomo</title>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#2f6b3a"><link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root{--bg:#f4f1e8;--card:#fffdf7;--tx:#1f2a22;--mu:#6c7468;--ac:#2f6b3a;--ac2:#e3eddc;--bd:#d9d4c3;--rd:#b3402f;--yl:#f2c94c;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -39,15 +40,15 @@ a{color:var(--ac)}
 #pv .ph{float:none;width:110px;height:110px;margin:4px 0}
 @media print{h1,nav,button,a.b,.noprint{display:none!important}body{background:#fff;color:#000;padding:0;font-size:13px}body.pr .card:not(.pp){display:none}.pp{break-inside:avoid;border:1px dashed #000;background:#fff;color:#000;margin-bottom:14px}.pp .mu,.pp a{color:#000}}
 </style></head><body>
-<h1>🛒 Pedidos do Mercadinho <button class="d" id="lo" hidden onclick="sb.auth.signOut().then(()=>location.reload())">Sair</button></h1>
+<h1>🛒 Mercado Mezzomo <button class="b s" id="ins" hidden style="padding:6px 10px;font-size:13px;margin-left:6px" onclick="ip.prompt()">Instalar app</button> <button class="d" id="lo" hidden onclick="sb.auth.signOut().then(()=>location.reload())">Sair</button></h1>
 <main id="v"></main>
 <nav id="nav"></nav>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 const $=s=>document.querySelector(s);
-let S={products:[],clients:[],orders:[],cart:{}};
+let S={products:[],clients:[],orders:[],cart:{},mine:[]};
 try{S=Object.assign(S,JSON.parse(localStorage.getItem('mk')||'{}'))}catch(e){}
-if(!S.products.length)S.products=[{id:'a1',n:'Arroz 5kg',p:28.9,u:'un'},{id:'a2',n:'Feijão carioca 1kg',p:8.5,u:'un'},{id:'a3',n:'Banana prata',p:6.9,u:'kg'},{id:'a4',n:'Leite integral 1L',p:5.2,u:'un'}];
+const SEED=[{id:'a1',n:'Arroz 5kg',p:28.9,u:'un'},{id:'a2',n:'Feijão carioca 1kg',p:8.5,u:'un'},{id:'a3',n:'Banana prata',p:6.9,u:'kg'},{id:'a4',n:'Leite integral 1L',p:5.2,u:'un'}];
 /* ===== SUPABASE: cole aqui os dados do seu projeto (Project Settings > API) ===== */
 const SB_URL='https://jfhyyizuziyxumtiebdn.supabase.co', SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmaHl5aXp1eml5eHVtdGllYmRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxMDY0NDAsImV4cCI6MjEwNzY4MjQ0MH0.-PCi3sXeLUeMh5RAPpLcNDLcbgCVRcntZB2IwHeDSvM';
 const sb=(window.supabase&&SB_URL.startsWith('http'))?window.supabase.createClient(SB_URL,SB_KEY):null;
@@ -83,14 +84,8 @@ async function login(){
   if(error)return alert('Não foi possível entrar: '+error.message);
   init();
 }
-async function init(){
-  if(!sb)return render();
-  const {data}=await sb.auth.getSession();
-  if(!data.session)return loginView();
-  logged=true;$('#lo').hidden=false;await pull();render();
-}
 document.addEventListener('visibilitychange',async()=>{
-  if(document.hidden||!logged||(tab!='ped'&&tab!='loja'))return;
+  if(document.hidden)return;if(CUST){if(tab=='loja'){await loadProducts();render()}return}if(!logged||(tab!='ped'&&tab!='loja'))return;
   await chain;await pull();render();
 });
 const R=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -107,9 +102,9 @@ function getLoc(cb){
 }
 const mapUrl=l=>`https://www.google.com/maps?q=${l.lat},${l.lng}`;
 function render(){
-  const T={loja:'Loja',cart:'Carrinho',prod:'Produtos',cli:'Clientes',ped:'Pedidos'};
+  const T=CUST?{loja:'Loja',cart:'Carrinho',eu:'Cadastro',meus:'Pedidos'}:{loja:'Loja',cart:'Carrinho',prod:'Produtos',cli:'Clientes',ped:'Pedidos'};
   $('#nav').innerHTML=Object.entries(T).map(([k,v])=>`<button class="${tab==k?'on':''}" onclick="go('${k}')">${v}${k=='cart'&&count()?`<b>${count()}</b>`:''}</button>`).join('');
-  $('#v').innerHTML=({loja:vLoja,cart:vCart,prod:vProd,cli:vCli,ped:vPed})[tab]();
+  $('#v').innerHTML=({loja:vLoja,cart:vCart,prod:vProd,cli:vCli,ped:vPed,eu:vEu,meus:vMeus})[tab]();
   window.scrollTo(0,0);
 }
 const th=p=>p.img?`<img class="ph" alt="" src="${p.img}">`:`<div class="ph">🛒</div>`;
@@ -237,5 +232,84 @@ function vPed(){
     <button class="d" onclick="S.orders=S.orders.filter(x=>x.id!='${o.id}');save();render()">Excluir</button></div></div>`}).join('');
 }
 function tg(id){const o=S.orders.find(x=>x.id==id);o.done=!o.done;save();render();}
+/* ===== MODO CLIENTE (app instalável): cadastro + pedidos ===== */
+const CFG=SB_URL.startsWith('http');let CUST=false,ip=null,me=null;
+try{me=JSON.parse(localStorage.getItem('mkme')||'null')}catch(e){}
+S.mine=S.mine||[];
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();ip=e;$('#ins').hidden=false});
+const rid=()=>crypto.randomUUID?crypto.randomUUID():uid()+uid()+uid()+uid()+uid()+uid();
+async function loadProducts(){
+  if(!sb)return;
+  const {data,error}=await sb.from('products').select('data');
+  if(!error&&data){S.products=data.map(r=>r.data);loc()}
+}
+const _vc=vCart;
+vCart=function(){
+  if(!CUST)return _vc();
+  if(me&&!co.addr)co.addr=me.a;
+  if(me&&!co.loc)co.loc=me.loc||null;
+  const h=_vc();
+  if(!items().length)return h;
+  const blk=me?`<p><b>${esc(me.n)}</b><br><span class="mu">${esc(me.t)}</span></p>`:`<p class="mu">Faça seu cadastro para finalizar o pedido.</p><button class="b s w" onclick="go('eu')">Fazer cadastro</button>`;
+  return h.replace(/<label>Cliente<\/label><select[\s\S]*?<\/select>\s*(<p class="mu">Nenhum cliente[\s\S]*?<\/p>)?/,()=>'<label>Entregar para</label>'+blk).replace('onclick="finish()"','onclick="finishC()"');
+};
+function vEu(){
+  const m=me||{},l=cLoc||m.loc;
+  return `<div class="card"><h2>${me?'Meu cadastro':'Crie seu cadastro'}</h2>
+  <label>Nome</label><input id="mn" value="${esc(m.n)}" autocomplete="name">
+  <label>Telefone / WhatsApp (com DDD)</label><input id="mt" type="tel" value="${esc(m.t)}" autocomplete="tel" placeholder="(93) 99999-9999">
+  <label>Endereço (rua, número, bairro, referência)</label><textarea id="ma" rows="2" autocomplete="street-address">${esc(m.a)}</textarea>
+  <button class="b s w" onclick="getLoc(x=>{cLoc=x;$('#cl').textContent='📍 '+x.lat+', '+x.lng})">📍 Usar minha localização</button>
+  <p id="cl" class="mu">${l?'📍 '+l.lat+', '+l.lng:''}</p>
+  <button class="b w" onclick="saveMe()">Salvar cadastro</button></div>
+  <p class="mu">Para instalar o app: no Android toque em "Instalar app" no topo; no iPhone toque em Compartilhar e depois em Adicionar à Tela de Início.</p>
+  <p class="mu"><a href="#" onclick="location.hash='admin';location.reload();return false">Área da loja</a></p>`;
+}
+async function saveMe(){
+  const n=$('#mn').value.trim(),t=$('#mt').value.trim(),a=$('#ma').value.trim();
+  if(!n||!a||t.replace(/\D/g,'').length<10)return alert('Informe nome, telefone com DDD e endereço.');
+  const m={id:me?me.id:rid(),n,t,a,loc:cLoc||(me&&me.loc)||null,date:me?me.date:new Date().toISOString()};
+  if(!sb)return alert('Sem conexão. Tente de novo com internet.');
+  const {error}=await sb.rpc('salvar_cliente',{p_id:m.id,p_data:m});
+  if(error)return alert('Não foi possível salvar o cadastro: '+error.message);
+  me=m;cLoc=null;try{localStorage.setItem('mkme',JSON.stringify(me))}catch(e){}
+  alert('Cadastro salvo!');go(items().length?'cart':'loja');
+}
+async function finishC(){
+  if(!me){alert('Faça seu cadastro primeiro.');return go('eu')}
+  const it=items(),t=total(),cash=parseFloat(co.cash)||0;
+  if(!co.addr.trim())return alert('Informe o endereço de entrega.');
+  if(co.pay=='Dinheiro'&&cash&&cash<t)return alert('O valor para troco é menor que o total.');
+  if(!sb)return alert('Sem conexão. Tente de novo com internet.');
+  const o={id:rid(),cid:me.id,date:new Date().toISOString(),cn:me.n,ph:me.t,addr:co.addr.trim(),loc:co.loc||null,
+    items:it.map(x=>({n:x.p.n,u:x.p.u,p:x.p.p,q:x.qt})),total:t,pay:co.pay,cash:co.pay=='Dinheiro'?cash:0,
+    troco:co.pay=='Dinheiro'&&cash?cash-t:0,obs:co.obs,done:false};
+  const {error}=await sb.from('orders').insert({id:o.id,data:o});
+  if(error)return alert('Não foi possível enviar o pedido: '+error.message);
+  S.mine.unshift(o);S.cart={};co={cid:'',addr:'',loc:null,pay:'Dinheiro',cash:'',obs:''};save();
+  alert('Pedido enviado! A loja vai entrar em contato.');go('meus');
+}
+function mineHtml(l){
+  if(!l.length)return '<div class="card"><p class="mu">Você ainda não fez pedidos.</p></div>';
+  return l.map(o=>`<div class="card"><div class="row"><b>${R(o.total)}</b><span class="tag ${o.done?'ok':''}">${o.done?'Entregue':'Em preparo'}</span></div>
+  <div class="mu">${new Date(o.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})} · ${esc(o.pay)}${o.troco?' · troco para '+R(o.cash):''}</div>
+  <p>${o.items.map(i=>`${i.q}× ${esc(i.n)}`).join('<br>')}</p></div>`).join('');
+}
+function vMeus(){setTimeout(loadMeus,0);return '<h2>Meus pedidos</h2><div id="mp">'+mineHtml(S.mine)+'</div>';}
+async function loadMeus(){
+  if(!sb||!me)return;
+  const {data,error}=await sb.rpc('meus_pedidos',{p_cid:me.id});
+  if(!error&&data){S.mine=data;loc();const e=$('#mp');if(e)e.innerHTML=mineHtml(data)}
+}
+async function init(){
+  if(!CFG){if(!S.products.length)S.products=SEED;return render()}
+  let ses=null;
+  if(sb){try{ses=(await sb.auth.getSession()).data.session}catch(e){}}
+  if(ses){logged=true;$('#lo').hidden=false;await pull();return render()}
+  if(location.hash=='#admin'&&sb)return loginView();
+  CUST=true;tab='loja';render();await loadProducts();render();
+}
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+
 init();
 </script></body></html>
