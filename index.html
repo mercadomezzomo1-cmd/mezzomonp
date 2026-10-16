@@ -70,8 +70,26 @@ nav button.on .ic svg{stroke-width:2.3}
 nav button.on .lb{font-weight:800}
 nav button .bd{position:absolute;top:-4px;right:5px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--rd);color:#fff;font-size:11px;line-height:14px;text-align:center;border:2px solid var(--card)}
 .wa,.cb{bottom:calc(80px + env(safe-area-inset-bottom,0px))}.up{bottom:calc(136px + env(safe-area-inset-bottom,0px))}
+.top{display:flex;align-items:center;gap:10px;padding:12px 14px;max-width:720px;margin:0 auto}.top img{width:50px;height:50px;border-radius:50%;flex:none}.top .sp{flex:1;min-width:0}.top b{font:700 21px/1.1 Georgia,serif;display:block}.top small{color:var(--mu);font-size:12.5px;display:block;line-height:1.3}
+#pcup{display:none}
+@media print{
+body.pr>*:not(#pcup){display:none!important}
+body.pr #pcup{display:block;color:#000;background:#fff}
+.cp{font:700 14px/1.35 Arial,Helvetica,sans-serif;color:#000;break-inside:avoid}
+.cp hr{border:0;border-top:2px dashed #000;margin:7px 0}
+.cl{display:block;margin:0 auto 4px;width:32mm;height:32mm}
+.cn{text-align:center;font-size:22px;font-weight:900;letter-spacing:.5px}
+.cs{text-align:center;font-size:13px;font-weight:700}
+.cb2{text-align:center;font-size:26px;font-weight:900}
+.ci{font-size:15px;font-weight:800;margin-top:5px}
+.cr{display:flex;justify-content:space-between;font-size:15px}
+.ct{font-size:24px;font-weight:900}
+.cbig{font-size:18px;font-weight:900;border:2px solid #000;padding:4px;text-align:center;margin:5px 0}
+body.t80 .cp{width:72mm;break-after:page;padding-bottom:6mm}
+body.a4 .cp{max-width:115mm;margin:0 auto 8mm;border:2px dashed #000;padding:8mm;font-size:16px}
+}
 </style></head><body>
-<h1>🛒 Mercado Mezzomo <button class="b s" id="ins" hidden style="padding:6px 10px;font-size:13px;margin-left:6px" onclick="ip.prompt()">Instalar app</button> <button class="d" id="lo" hidden onclick="sb.auth.signOut().then(()=>location.reload())">Sair</button></h1>
+<header class="top"><img src="logo.png" alt="" onerror="this.remove()"><div class="sp"><b>Mercado Mezzomo</b><small id="sub">Rua Jair Antonio Fortes, nº 626 · Novo Progresso/PA</small></div><button class="b s" id="ins" hidden style="padding:6px 10px;font-size:13px" onclick="ip.prompt()">Instalar app</button><button class="d" id="lo" hidden onclick="sb.auth.signOut().then(()=>location.reload())">Sair</button></header>
 <main id="v"></main>
 <nav id="nav"></nav>
 <a id="wa" class="wa" hidden target="_blank" rel="noopener" aria-label="Falar no WhatsApp">💬</a>
@@ -224,8 +242,7 @@ function vProd(){
   ${(pImg??p.img)?`<button class="d" onclick="pImg='';$('#pv').innerHTML=''">Remover foto</button>`:''}
   <button class="b w" onclick="saveP()">Salvar produto</button></div>
   <div class="card"><label>Importar planilha CSV (colunas: nome; preço; categoria; código; unidade)</label><input type="file" accept=".csv,.txt" onchange="impCSV(this)"></div>
-  ${S.products.map(x=>`<div class="card row"><div class="it">${th(x)}<b>${esc(x.n)}</b><div class="mu">${R(x.p)} / ${esc(x.u)}${x.c?' · '+esc(x.c):''}${x.cod?' · cód. '+esc(x.cod):''}</div></div>
-  <div><button class="b s" onclick="editP='${x.id}';pImg=undefined;render()">Editar</button><button class="d" onclick="delP('${x.id}')">Excluir</button></div></div>`).join('')}`;
+  ${prodSearch()}`;
 }
 function saveP(){
   const n=$('#pn').value.trim(),pr=parseFloat($('#pp').value);
@@ -319,7 +336,7 @@ listHtml=function(){
 };
 vLoja=function(){
   const n=count();
-  return `<div class="sh"><img src="logo.png" alt="" onerror="this.remove()"><div><b class="sn">Mercado Mezzomo</b><div class="mu">Novo Progresso/PA</div></div></div>
+  return `
   <div class="srch"><input placeholder="Buscar produtos" value="${esc(q)}" oninput="q=this.value;lim=60;$('#pl').innerHTML=listHtml()">
   <select aria-label="Categoria" onchange="cat=this.value;lim=60;$('#pl').innerHTML=listHtml()"><option value="">Todos (${S.products.length})</option>${catList().map(([c,k])=>`<option value="${esc(c)}" ${cat==c?'selected':''}>${esc(c)} (${k})</option>`).join('')}</select>
   <select aria-label="Ordenar" onchange="ord=this.value;lim=60;$('#pl').innerHTML=listHtml()">${[['az','A-Z'],['za','Z-A'],['lo','Menor preço'],['hi','Maior preço']].map(([v,x])=>`<option value="${v}" ${ord==v?'selected':''}>Ordenar: ${x}</option>`).join('')}</select></div>
@@ -331,20 +348,6 @@ add=function(id,d){
   S.cart[id]=Math.max(0,(S.cart[id]||0)+d);if(!S.cart[id])delete S.cart[id];
   save();const y=scrollY;render();scrollTo(0,y);
 };
-function impCSV(inp){
-  const f=inp.files[0];if(!f)return;
-  f.text().then(t=>{
-    const L=t.replace(/^\uFEFF/,'').split(/\r?\n/).filter(x=>x.trim()),d=(L[0]||'').includes(';')?';':',';let n=0;
-    L.forEach(ln=>{
-      const c=ln.split(d).map(x=>x.replace(/^"|"$/g,'').trim()),s=(c[1]||'').replace(/[R$\s]/g,'');
-      const pr=s.includes(',')?parseFloat(s.replace(/\./g,'').replace(',','.')):parseFloat(s);
-      if(!c[0]||isNaN(pr))return;
-      const o=c[3]&&S.products.find(x=>x.cod==c[3]),r={n:c[0],p:pr,c:(c[2]||'').toUpperCase(),cod:c[3]||'',u:c[4]||'un',...(/^https?:/.test(c[5]||'')?{img:c[5]}:{})};
-      if(o)Object.assign(o,r);else S.products.push({id:rid(),img:'',...r});n++;
-    });
-    save();render();alert(n+' produtos importados ou atualizados.');
-  });
-}
 
 /* ===== CONTA DO CLIENTE: entrar com WhatsApp ou e-mail + senha ===== */
 const FAKE='@mercadomezzomo1-cmd.github.io'; /* usado só como identificador interno de quem entra com WhatsApp */
@@ -568,6 +571,81 @@ printO=function(id){
   window.onafterprint=()=>{document.body.classList.remove('pr','a4','t80');c.forEach(e=>e.classList.remove('pp'))};
   window.print();
 };
+
+/* ===== EMPRESA, CUPOM, BUSCA DE PRODUTOS E CORREÇÃO DE VALORES ===== */
+const EMP={n:'Mercado Mezzomo',e:'Rua Jair Antonio Fortes, nº 626',c:'Novo Progresso/PA'};
+const LOGO_C='data:image/png;base64,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';
+const fmtTel=v=>{const d=digits(v);return d.length==11?`(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`:d};
+if(ZAP){const s=$('#sub');if(s)s.textContent+=' · '+fmtTel(ZAP)}
+function cupom(o){
+  const dt=new Date(o.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
+  return `<div class="cp"><img class="cl" src="${LOGO_C}" alt="">
+  <div class="cn">${EMP.n.toUpperCase()}</div><div class="cs">${EMP.e}</div><div class="cs">${EMP.c}${ZAP?' · '+fmtTel(ZAP):''}</div>
+  <hr><div class="cb2">PEDIDO #${o.id.slice(-4).toUpperCase()}</div><div class="cs">${dt}</div><hr>
+  <div><b>Cliente:</b> ${esc(o.cn)}</div>${o.ph?`<div><b>Tel:</b> ${esc(o.ph)}</div>`:''}<div><b>Endereço:</b> ${esc(o.addr)}</div><hr>
+  ${o.items.map(i=>`<div class="ci">${esc(i.n)}</div><div class="cr"><span>${i.q} x ${R(i.p)}</span><b>${R(i.p*i.q)}</b></div>`).join('')}<hr>
+  <div class="cr ct"><span>TOTAL</span><span>${R(o.total)}</span></div>
+  <div><b>Pagamento:</b> ${esc(o.pay)}</div>
+  ${o.troco?`<div><b>Troco para:</b> ${R(o.cash)}</div><div class="cbig">LEVAR TROCO: ${R(o.troco)}</div>`:''}
+  ${o.obs?`<div><b>Obs:</b> ${esc(o.obs)}</div>`:''}<hr>
+  <div class="cs">Obrigado pela preferência!<br>Deus seja louvado</div></div>`;
+}
+printO=function(id){
+  const L=[...document.querySelectorAll('.ord')].filter(e=>!id||e.id=='o-'+id).map(e=>S.orders.find(o=>'o-'+o.id==e.id)).filter(Boolean);
+  if(!L.length)return alert('Nenhum pedido para imprimir.');
+  let st=$('#pgs');if(!st){st=document.createElement('style');st.id='pgs';document.head.appendChild(st)}
+  st.textContent=fmt=='t80'?'@page{size:80mm auto;margin:2mm}':'@page{size:A4;margin:12mm}';
+  const box=document.createElement('div');box.id='pcup';box.innerHTML=L.map(cupom).join('');document.body.appendChild(box);
+  document.body.classList.add('pr',fmt);
+  window.onafterprint=()=>{document.body.classList.remove('pr','a4','t80');box.remove()};
+  const im=box.querySelector('img');
+  (im&&im.decode?im.decode().catch(()=>{}):Promise.resolve()).then(()=>window.print());
+};
+/* produtos: busca para edição + importação sem inverter preço e código */
+let pq='',plim=40;
+function prodRows(){
+  const t=pq.toLowerCase().trim(),l=S.products.filter(p=>!t||(p.n+' '+(p.cod||'')+' '+(p.c||'')).toLowerCase().includes(t)).sort((a,b)=>a.n.localeCompare(b.n,'pt-BR'));
+  if(!l.length)return '<p class="mu">Nenhum produto encontrado.</p>';
+  return l.slice(0,plim).map(x=>`<div class="card row"><div class="it">${th(x)}<b>${esc(x.n)}</b><div class="mu">${R(x.p)} / ${esc(x.u)}${x.c?' · '+esc(x.c):''}${x.cod?' · cód. '+esc(x.cod):''}</div></div>
+  <div><button class="b s" onclick="editP='${x.id}';pImg=undefined;render()">Editar</button><button class="d" onclick="delP('${x.id}')">Excluir</button></div></div>`).join('')+(l.length>plim?`<button class="b s w" onclick="plim+=40;$('#pl2').innerHTML=prodRows()">Mostrar mais (${l.length-plim})</button>`:'');
+}
+function prodSearch(){
+  return `<input type="search" placeholder="🔍 Buscar produto para editar (nome, código ou categoria)" value="${esc(pq)}" oninput="pq=this.value;plim=40;$('#pl2').innerHTML=prodRows()">
+  <div class="mu" style="margin:-4px 0 8px">${S.products.length} produtos cadastrados · <a href="#" onclick="fixInv();return false">corrigir preço e código invertidos</a></div><div id="pl2">${prodRows()}</div>`;
+}
+const parsePrice=s=>{s=String(s||'').replace(/[R$\s]/g,'');return s.includes(',')?parseFloat(s.replace(/\./g,'').replace(',','.')):parseFloat(s)};
+const looksPrice=s=>/^\d+[.,]\d{2}$/.test(String(s).replace(/[R$\s]/g,''));
+const looksCode=s=>/^\d{4,}$/.test(String(s).trim());
+function fixInv(){
+  let n=0;
+  S.products.forEach(p=>{
+    if(looksPrice(p.cod||'')&&Number.isInteger(p.p)){const np=parsePrice(p.cod);p.cod=String(p.p).padStart(6,'0');p.p=np;n++}
+  });
+  if(n)save();render();alert(n?n+' produtos corrigidos (preço e código estavam trocados).':'Nenhum produto com preço e código invertidos foi encontrado.');
+}
+function impCSV(inp){
+  const f=inp.files[0];if(!f)return;
+  f.text().then(t=>{
+    const L=t.replace(/^\uFEFF/,'').split(/\r?\n/).filter(x=>x.trim()),d=(L[0]||'').includes(';')?';':',';
+    const row=ln=>ln.split(d).map(x=>x.replace(/^"|"$/g,'').trim());
+    let ix={n:0,p:1,c:2,cod:3,u:4,img:5};const h=row(L[0]||'').map(x=>x.toLowerCase()),fd=re=>h.findIndex(x=>re.test(x));
+    if(fd(/nome|produto|descri/)>=0&&fd(/pre[çc]o|valor/)>=0){
+      ix={n:fd(/nome|produto|descri/),p:fd(/pre[çc]o|valor/),c:fd(/categ/),cod:fd(/c[óo]d/),u:fd(/unid/),img:fd(/foto|imagem|img/)};L.shift();
+    }
+    let n=0,sw=0;
+    L.forEach(ln=>{
+      const c=row(ln),g=k=>ix[k]>=0?(c[ix[k]]||''):'';
+      let ps=g('p'),cod=g('cod');
+      if(looksCode(ps)&&looksPrice(cod)){[ps,cod]=[cod,ps];sw++}
+      const pr=parsePrice(ps);
+      if(!g('n')||isNaN(pr))return;
+      const r={n:g('n'),p:pr,c:g('c').toUpperCase(),cod,u:g('u')||'un',...(/^https?:/.test(g('img'))?{img:g('img')}:{})};
+      const o=cod&&S.products.find(x=>x.cod==cod);
+      if(o)Object.assign(o,r);else S.products.push({id:rid(),img:'',...r});n++;
+    });
+    save();render();alert(n+' produtos importados ou atualizados.'+(sw?' '+sw+' linhas tinham preço e código trocados e foram corrigidas.':''));
+  });
+}
 
 init();
 </script></body></html>
