@@ -117,7 +117,7 @@ function getLoc(cb){
 }
 const mapUrl=l=>`https://www.google.com/maps?q=${l.lat},${l.lng}`;
 function render(){
-  const T=CUST?{loja:'Loja',cart:'Carrinho',eu:'Cadastro',meus:'Pedidos'}:{loja:'Loja',cart:'Carrinho',prod:'Produtos',cli:'Clientes',ped:'Pedidos'};
+  const T=CUST?{loja:'Loja',cart:'Carrinho',eu:(user?'Minha conta':'Entrar'),meus:'Pedidos'}:{loja:'Loja',cart:'Carrinho',prod:'Produtos',cli:'Clientes',ped:'Pedidos'};
   $('#nav').innerHTML=Object.entries(T).map(([k,v])=>`<button class="${tab==k?'on':''}" onclick="go('${k}')">${v}${k=='cart'&&count()?`<b>${count()}</b>`:''}</button>`).join('');
   $('#v').innerHTML=({loja:vLoja,cart:vCart,prod:vProd,cli:vCli,ped:vPed,eu:vEu,meus:vMeus})[tab]();
   window.scrollTo(0,0);
@@ -268,45 +268,9 @@ vCart=function(){
   if(me&&!co.loc)co.loc=me.loc||null;
   const h=_vc();
   if(!items().length)return h;
-  const blk=me?`<p><b>${esc(me.n)}</b><br><span class="mu">${esc(me.t)}</span></p>`:`<p class="mu">Faça seu cadastro para finalizar o pedido.</p><button class="b s w" onclick="go('eu')">Fazer cadastro</button>`;
+  const blk=me?`<p><b>${esc(me.n)}</b><br><span class="mu">${esc(me.t)}</span></p>`:`<p class="mu">Entre ou crie sua conta para finalizar o pedido.</p><button class="b s w" onclick="go('eu')">Entrar ou criar conta</button>`;
   return h.replace(/<label>Cliente<\/label><select[\s\S]*?<\/select>\s*(<p class="mu">Nenhum cliente[\s\S]*?<\/p>)?/,()=>'<label>Entregar para</label>'+blk).replace('onclick="finish()"','onclick="finishC()"');
 };
-function vEu(){
-  const m=me||{},l=cLoc||m.loc;
-  return `<div class="card"><h2>${me?'Meu cadastro':'Crie seu cadastro'}</h2>
-  <label>Nome</label><input id="mn" value="${esc(m.n)}" autocomplete="name">
-  <label>Telefone / WhatsApp (com DDD)</label><input id="mt" type="tel" value="${esc(m.t)}" autocomplete="tel" placeholder="(93) 99999-9999">
-  <label>Endereço (rua, número, bairro, referência)</label><textarea id="ma" rows="2" autocomplete="street-address">${esc(m.a)}</textarea>
-  <button class="b s w" onclick="getLoc(x=>{cLoc=x;$('#cl').textContent='📍 '+x.lat+', '+x.lng})">📍 Usar minha localização</button>
-  <p id="cl" class="mu">${l?'📍 '+l.lat+', '+l.lng:''}</p>
-  <button class="b w" onclick="saveMe()">Salvar cadastro</button></div>
-  <p class="mu">Para instalar o app: no Android toque em "Instalar app" no topo; no iPhone toque em Compartilhar e depois em Adicionar à Tela de Início.</p>
-  <p class="mu"><a href="#" onclick="location.hash='admin';location.reload();return false">Área da loja</a></p>`;
-}
-async function saveMe(){
-  const n=$('#mn').value.trim(),t=$('#mt').value.trim(),a=$('#ma').value.trim();
-  if(!n||!a||t.replace(/\D/g,'').length<10)return alert('Informe nome, telefone com DDD e endereço.');
-  const m={id:me?me.id:rid(),n,t,a,loc:cLoc||(me&&me.loc)||null,date:me?me.date:new Date().toISOString()};
-  if(!sb)return alert('Sem conexão. Tente de novo com internet.');
-  const {error}=await sb.rpc('salvar_cliente',{p_id:m.id,p_data:m});
-  if(error)return alert('Não foi possível salvar o cadastro: '+error.message);
-  me=m;cLoc=null;try{localStorage.setItem('mkme',JSON.stringify(me))}catch(e){}
-  alert('Cadastro salvo!');go(items().length?'cart':'loja');
-}
-async function finishC(){
-  if(!me){alert('Faça seu cadastro primeiro.');return go('eu')}
-  const it=items(),t=total(),cash=parseFloat(co.cash)||0;
-  if(!co.addr.trim())return alert('Informe o endereço de entrega.');
-  if(co.pay=='Dinheiro'&&cash&&cash<t)return alert('O valor para troco é menor que o total.');
-  if(!sb)return alert('Sem conexão. Tente de novo com internet.');
-  const o={id:rid(),cid:me.id,date:new Date().toISOString(),cn:me.n,ph:me.t,addr:co.addr.trim(),loc:co.loc||null,
-    items:it.map(x=>({n:x.p.n,u:x.p.u,p:x.p.p,q:x.qt})),total:t,pay:co.pay,cash:co.pay=='Dinheiro'?cash:0,
-    troco:co.pay=='Dinheiro'&&cash?cash-t:0,obs:co.obs,done:false};
-  const {error}=await sb.from('orders').insert({id:o.id,data:o});
-  if(error)return alert('Não foi possível enviar o pedido: '+error.message);
-  S.mine.unshift(o);S.cart={};co={cid:'',addr:'',loc:null,pay:'Dinheiro',cash:'',obs:''};save();
-  alert('Pedido enviado! A loja vai entrar em contato.');go('meus');
-}
 function mineHtml(l){
   if(!l.length)return '<div class="card"><p class="mu">Você ainda não fez pedidos.</p></div>';
   return l.map(o=>`<div class="card"><div class="row"><b>${R(o.total)}</b><span class="tag ${o.done?'ok':''}">${o.done?'Entregue':'Em preparo'}</span></div>
@@ -314,19 +278,6 @@ function mineHtml(l){
   <p>${o.items.map(i=>`${i.q}× ${esc(i.n)}`).join('<br>')}</p></div>`).join('');
 }
 function vMeus(){setTimeout(loadMeus,0);return '<h2>Meus pedidos</h2><div id="mp">'+mineHtml(S.mine)+'</div>';}
-async function loadMeus(){
-  if(!sb||!me)return;
-  const {data,error}=await sb.rpc('meus_pedidos',{p_cid:me.id});
-  if(!error&&data){S.mine=data;loc();const e=$('#mp');if(e)e.innerHTML=mineHtml(data)}
-}
-async function init(){
-  if(!CFG){if(!S.products.length)S.products=SEED;return render()}
-  let ses=null;
-  if(sb){try{ses=(await sb.auth.getSession()).data.session}catch(e){}}
-  if(ses){logged=true;$('#lo').hidden=false;await pull();return render()}
-  if(location.hash=='#admin'&&sb)return loginView();
-  CUST=true;tab='loja';if(ZAP){$('#wa').href='https://wa.me/55'+ZAP.replace(/\D/g,'');$('#wa').hidden=false}render();await loadProducts();render();
-}
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 
 /* ===== VITRINE (estilo catálogo) ===== */
@@ -366,6 +317,115 @@ function impCSV(inp){
     });
     save();render();alert(n+' produtos importados ou atualizados.');
   });
+}
+
+/* ===== CONTA DO CLIENTE: entrar com WhatsApp ou e-mail + senha ===== */
+const FAKE='@mercadomezzomo1-cmd.github.io'; /* usado só como identificador interno de quem entra com WhatsApp */
+const digits=v=>String(v).replace(/\D/g,'');
+function authEmail(v){
+  v=String(v).trim().toLowerCase();
+  if(v.includes('@'))return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)?v:'';
+  let d=digits(v);if(d.length>=10&&d.length<=11)d='55'+d;
+  return d.length>=12&&d.length<=13?d+FAKE:'';
+}
+let user=null,am='in';
+const wz=i=>{$('#aw').hidden=!i.value.includes('@')};
+const instTip='<p class="mu">Para instalar o app: no Android toque em "Instalar app" no topo; no iPhone toque em Compartilhar e depois em Adicionar à Tela de Início.</p><p class="mu"><a href="#" onclick="location.hash=\'admin\';location.reload();return false">Área da loja</a></p>';
+const locBtn=`<button class="b s w" onclick="getLoc(x=>{cLoc=x;$('#cl').textContent='📍 '+x.lat+', '+x.lng})">📍 Usar minha localização</button>`;
+function vEu(){
+  if(user)return vPerfil();
+  const up=am=='up';
+  return `<div class="card"><h2>${up?'Criar conta':'Entrar'}</h2>
+  <div class="g2"><button class="b ${up?'s':''}" onclick="am='in';render()">Entrar</button><button class="b ${up?'':'s'}" onclick="am='up';render()">Criar conta</button></div><br>
+  ${up?'<label>Nome</label><input id="an" autocomplete="name">':''}
+  <label>WhatsApp (com DDD) ou e-mail</label><input id="al" autocomplete="username" ${up?'oninput="wz(this)"':''} placeholder="(93) 99999-9999 ou nome@email.com">
+  ${up?'<div id="aw" hidden><label>Seu WhatsApp (com DDD)</label><input id="at" type="tel" autocomplete="tel"></div>':''}
+  <label>Senha${up?' (mínimo 6 caracteres)':''}</label><input id="ap" type="password" autocomplete="${up?'new-password':'current-password'}">
+  ${up?`<label>Endereço (rua, número, bairro, referência)</label><textarea id="aa" rows="2" autocomplete="street-address"></textarea>${locBtn}<p id="cl" class="mu"></p>`:''}
+  <button class="b w" onclick="${up?'criarConta()':'entrar()'}">${up?'Criar conta':'Entrar'}</button></div>${instTip}`;
+}
+function vPerfil(){
+  const m=me||{},l=cLoc||m.loc;
+  return `<div class="card"><h2>Minha conta</h2>${me?'':'<p class="mu">Complete seu cadastro para fazer pedidos.</p>'}
+  <label>Nome</label><input id="mn" value="${esc(m.n)}" autocomplete="name">
+  <label>WhatsApp (com DDD)</label><input id="mt" type="tel" value="${esc(m.t)}" autocomplete="tel">
+  <label>Endereço (rua, número, bairro, referência)</label><textarea id="ma" rows="2" autocomplete="street-address">${esc(m.a)}</textarea>
+  ${locBtn}<p id="cl" class="mu">${l?'📍 '+l.lat+', '+l.lng:''}</p>
+  <button class="b w" onclick="saveMe()">Salvar cadastro</button></div>
+  <button class="d" onclick="sair()">Sair da conta</button>${instTip}`;
+}
+async function criarConta(){
+  if(!sb)return alert('Sem conexão. Tente de novo com internet.');
+  const n=$('#an').value.trim(),l=$('#al').value.trim(),p=$('#ap').value,a=$('#aa').value.trim(),mail=l.includes('@'),em=authEmail(l),tel=mail?$('#at').value.trim():l;
+  if(!n||!a)return alert('Preencha nome e endereço.');
+  if(!em)return alert('Informe um WhatsApp com DDD ou um e-mail válido.');
+  if(digits(tel).length<10)return alert('Informe seu WhatsApp com DDD.');
+  if(p.length<6)return alert('A senha precisa ter pelo menos 6 caracteres.');
+  const {data,error}=await sb.auth.signUp({email:em,password:p});
+  if(error)return alert(/registered|exists/i.test(error.message)?'Esse contato já tem conta. Use a aba Entrar.':'Não foi possível criar a conta: '+error.message);
+  if(!data.session)return alert('Conta criada, mas a loja precisa desligar a confirmação de e-mail no Supabase.');
+  user=data.user;
+  me={id:user.id,n,t:tel,e:mail?l.toLowerCase():'',a,loc:cLoc||null,date:new Date().toISOString()};
+  const r=await sb.from('clients').upsert({id:me.id,data:me});
+  if(r.error){me=null;return alert('Conta criada, mas o cadastro não foi salvo: '+r.error.message)}
+  cLoc=null;alert('Conta criada!');go(items().length?'cart':'loja');
+}
+async function entrar(){
+  if(!sb)return alert('Sem conexão. Tente de novo com internet.');
+  const em=authEmail($('#al').value);
+  if(!em)return alert('Informe um WhatsApp com DDD ou um e-mail válido.');
+  const {data,error}=await sb.auth.signInWithPassword({email:em,password:$('#ap').value});
+  if(error)return alert('Contato ou senha incorretos.');
+  user=data.user;await loadMe();go(items().length?'cart':'loja');
+}
+async function loadMe(){
+  const {data}=await sb.from('clients').select('data').eq('id',user.id).maybeSingle();
+  me=data?data.data:null;
+}
+async function saveMe(){
+  const n=$('#mn').value.trim(),t=$('#mt').value.trim(),a=$('#ma').value.trim();
+  if(!n||!a||digits(t).length<10)return alert('Informe nome, WhatsApp com DDD e endereço.');
+  const m={...(me||{}),id:user.id,n,t,a,loc:cLoc||(me&&me.loc)||null,date:(me&&me.date)||new Date().toISOString()};
+  const {error}=await sb.from('clients').upsert({id:m.id,data:m});
+  if(error)return alert('Não foi possível salvar o cadastro: '+error.message);
+  me=m;cLoc=null;alert('Cadastro salvo!');go(items().length?'cart':'loja');
+}
+async function sair(){await sb.auth.signOut();user=null;me=null;S.mine=[];loc();go('loja')}
+async function finishC(){
+  if(!user||!me){alert('Entre na sua conta e complete o cadastro para finalizar.');return go('eu')}
+  const it=items(),t=total(),cash=parseFloat(co.cash)||0;
+  if(!co.addr.trim())return alert('Informe o endereço de entrega.');
+  if(co.pay=='Dinheiro'&&cash&&cash<t)return alert('O valor para troco é menor que o total.');
+  const o={id:rid(),cid:user.id,date:new Date().toISOString(),cn:me.n,ph:me.t,addr:co.addr.trim(),loc:co.loc||null,
+    items:it.map(x=>({n:x.p.n,u:x.p.u,p:x.p.p,q:x.qt})),total:t,pay:co.pay,cash:co.pay=='Dinheiro'?cash:0,
+    troco:co.pay=='Dinheiro'&&cash?cash-t:0,obs:co.obs,done:false};
+  const {error}=await sb.from('orders').insert({id:o.id,data:o});
+  if(error)return alert('Não foi possível enviar o pedido: '+error.message);
+  S.mine.unshift(o);S.cart={};co={cid:'',addr:'',loc:null,pay:'Dinheiro',cash:'',obs:''};save();
+  alert('Pedido enviado! A loja vai entrar em contato.');go('meus');
+}
+vMeus=function(){
+  if(!user)return '<div class="card"><p class="mu">Entre na sua conta para ver seus pedidos.</p><button class="b" onclick="go(\'eu\')">Entrar</button></div>';
+  setTimeout(loadMeus,0);return '<h2>Meus pedidos</h2><div id="mp">'+mineHtml(S.mine)+'</div>';
+};
+async function loadMeus(){
+  if(!sb||!user)return;
+  const {data,error}=await sb.from('orders').select('data').order('updated_at',{ascending:false}).limit(30);
+  if(!error&&data){S.mine=data.map(r=>r.data);loc();const e=$('#mp');if(e)e.innerHTML=mineHtml(S.mine)}
+}
+async function init(){
+  if(!CFG){if(!S.products.length)S.products=SEED;return render()}
+  let ses=null;
+  if(sb){try{ses=(await sb.auth.getSession()).data.session}catch(e){}}
+  if(ses){
+    user=ses.user;
+    const {data:adm}=await sb.rpc('sou_admin');
+    if(adm){logged=true;$('#lo').hidden=false;await pull();return render()}
+    if(location.hash=='#admin'){await sb.auth.signOut();user=null;return loginView()}
+  }else if(location.hash=='#admin'&&sb)return loginView();
+  CUST=true;tab='loja';me=null;
+  if(ZAP){$('#wa').href='https://wa.me/55'+digits(ZAP);$('#wa').hidden=false}
+  render();await loadProducts();if(user)await loadMe();render();
 }
 
 init();
