@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-app="loja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mercado Mezzomo • Loja</title>
+<link rel="manifest" href="manifest-loja.webmanifest"><meta name="theme-color" content="#1d4f91"><link rel="apple-touch-icon" href="icon-loja-192.png">
+<style>
+:root{--bg:#f4f1e8;--card:#fffdf7;--tx:#1f2a22;--mu:#6c7468;--ac:#2f6b3a;--ac2:#e3eddc;--bd:#d9d4c3;--rd:#b3402f;--yl:#f2c94c;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#151a16;--card:#1e251f;--tx:#eef0e6;--mu:#9aa595;--ac:#6fbf7b;--ac2:#27352a;--bd:#34403a;--rd:#e8806f}}
+:root[data-theme="dark"]{--bg:#151a16;--card:#1e251f;--tx:#eef0e6;--mu:#9aa595;--ac:#6fbf7b;--ac2:#27352a;--bd:#34403a;--rd:#e8806f}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 "Trebuchet MS","Segoe UI",system-ui,sans-serif;padding-bottom:80px}
+h1{font:700 22px/1 Georgia,"Times New Roman",serif;margin:0;padding:16px 16px 8px;letter-spacing:.2px}
+h2{font:700 18px Georgia,serif;margin:4px 0 10px}
+main{max-width:720px;margin:0 auto;padding:8px 14px}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:2px solid var(--ac);padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
+nav button{flex:1;border:0;background:none;color:var(--mu);padding:12px 2px;font:600 13px inherit;font-family:inherit;position:relative}
+nav button.on{color:var(--ac);background:var(--ac2)}
+nav b{position:absolute;top:4px;right:calc(50% - 26px);background:var(--rd);color:#fff;border-radius:9px;font-size:11px;padding:1px 6px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:10px}
+.row{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.mu{color:var(--mu);font-size:14px}
+input,select,textarea{width:100%;padding:11px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit;margin:4px 0 8px}
+label{font-size:14px;color:var(--mu)}
+button.b{background:var(--ac);color:#fff;border:0;border-radius:8px;padding:11px 16px;font:700 15px inherit;font-family:inherit;cursor:pointer}
+button.s{background:var(--ac2);color:var(--ac)}
+button.d{background:none;color:var(--rd);padding:6px 8px}
+button.w{width:100%}
+.q{display:flex;align-items:center;gap:8px}
+.q button{width:36px;height:36px;border-radius:50%;border:1px solid var(--ac);background:var(--card);color:var(--ac);font-size:20px;font-weight:700}
+.tot{font:700 20px Georgia,serif}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tag{display:inline-block;padding:2px 8px;border-radius:6px;background:var(--yl);color:#333;font-size:12px;font-weight:700}
+.tag.ok{background:var(--ac);color:#fff}
+a{color:var(--ac)}
+:focus-visible{outline:3px solid var(--yl);outline-offset:2px}
+.ph{width:56px;height:56px;border-radius:8px;object-fit:cover;float:left;margin-right:10px;background:var(--ac2);display:flex;align-items:center;justify-content:center;font-size:26px}
+.it{display:flow-root}
+#pv .ph{float:none;width:110px;height:110px;margin:4px 0}
+@media print{h1,nav,button,a.b,.noprint{display:none!important}body{background:#fff;color:#000;padding:0;font-size:13px}body.pr .card:not(.pp){display:none}.pp{break-inside:avoid;border:1px dashed #000;background:#fff;color:#000;margin-bottom:14px}.pp .mu,.pp a{color:#000}}
+.sh{display:flex;align-items:center;gap:12px;margin:4px 0 12px}.sh img{width:72px;height:72px;border-radius:50%}.sn{font:700 21px Georgia,serif}
+.srch{display:grid;grid-template-columns:1fr 1fr;gap:0 8px}.srch input{grid-column:1/-1}
+.pg{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:10px}
+.pcard{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:4px}
+.pimg{aspect-ratio:1;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:40px;overflow:hidden}.pimg img{width:100%;height:100%;object-fit:contain}
+.pname{font-weight:700;font-size:14px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:35px}
+.pprice{font:700 18px Georgia,serif;margin-top:auto}
+.wa,.up{position:fixed;right:14px;width:48px;height:48px;border-radius:50%;border:0;display:flex;align-items:center;justify-content:center;font-size:22px;text-decoration:none;box-shadow:0 2px 8px #0004;z-index:4}
+.wa{background:#25d366;color:#fff;bottom:calc(66px + env(safe-area-inset-bottom,0px))}.wa[hidden]{display:none}
+.up{background:var(--card);color:var(--ac);bottom:calc(122px + env(safe-area-inset-bottom,0px));font-weight:700}
+.cb{position:fixed;left:14px;right:76px;bottom:calc(66px + env(safe-area-inset-bottom,0px));z-index:4;box-shadow:0 2px 8px #0004}
+body{padding-bottom:140px}
+@media print{.wa,.up,.cb{display:none!important}}
+.fl{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px}.fl button{white-space:nowrap;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:16px;padding:7px 12px;font:600 13px inherit;font-family:inherit}.fl button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+@media print{.pp::before{content:"Mercado Mezzomo · Pedido";display:block;font-weight:700;margin-bottom:6px}}
+html[data-app=loja]{--ac:#1d4f91;--ac2:#e1ebf7}
+@media(prefers-color-scheme:dark){html[data-app=loja]:not([data-theme=light]){--ac:#7fb0ee;--ac2:#1f2d40}}
+</style></head><body>
+<h1>🏪 Painel da loja <button class="b s" id="ins" hidden style="padding:6px 10px;font-size:13px;margin-left:6px" onclick="ip.prompt()">Instalar app</button> <button class="d" id="lo" hidden onclick="sb.auth.signOut().then(()=>location.reload())">Sair</button></h1>
+<main id="v"></main>
+<nav id="nav"></nav>
+<a id="wa" class="wa" hidden target="_blank" rel="noopener" aria-label="Falar no WhatsApp">💬</a>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+let S={products:[],clients:[],orders:[],cart:{},mine:[]};
+try{S=Object.assign(S,JSON.parse(localStorage.getItem('mk')||'{}'))}catch(e){}
+const SEED=[{id:'a1',n:'Arroz 5kg',p:28.9,u:'un'},{id:'a2',n:'Feijão carioca 1kg',p:8.5,u:'un'},{id:'a3',n:'Banana prata',p:6.9,u:'kg'},{id:'a4',n:'Leite integral 1L',p:5.2,u:'un'}];
+/* ===== SUPABASE: cole aqui os dados do seu projeto (Project Settings > API) ===== */
+const SB_URL='https://jfhyyizuziyxumtiebdn.supabase.co', SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmaHl5aXp1eml5eHVtdGllYmRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxMDY0NDAsImV4cCI6MjEwNzY4MjQ0MH0.-PCi3sXeLUeMh5RAPpLcNDLcbgCVRcntZB2IwHeDSvM';
+const ZAP=''; /* WhatsApp da loja: só números com DDD. Ex.: '93999999999' */
+const sb=(window.supabase&&SB_URL.startsWith('http'))?window.supabase.createClient(SB_URL,SB_KEY):null;
+const TB=['products','clients','orders'];let snap={},logged=false,busy=0,chain=Promise.resolve();
+const loc=()=>{try{localStorage.setItem('mk',JSON.stringify(S))}catch(e){}};
+const save=()=>{loc();if(sb&&logged){busy++;chain=chain.then(push).catch(fail).finally(()=>busy--)}};
+const fail=e=>alert('Falha ao sincronizar: '+(e&&e.message||e));
+async function pull(){
+  for(const t of TB){
+    const {data,error}=await sb.from(t).select('data');
+    if(error)return fail(error);
+    S[t]=data.map(r=>r.data);
+    snap[t]=Object.fromEntries(S[t].map(r=>[r.id,JSON.stringify(r)]));
+  }
+  S.orders.sort((a,b)=>String(b.date).localeCompare(String(a.date)));loc();
+}
+async function push(){
+  for(const t of TB){
+    const cur=Object.fromEntries(S[t].map(r=>[r.id,JSON.stringify(r)])),old=snap[t]||{};
+    const up=S[t].filter(r=>cur[r.id]!==old[r.id]).map(r=>({id:r.id,data:r,updated_at:new Date().toISOString()}));
+    const del=Object.keys(old).filter(id=>!(id in cur));
+    if(up.length){const {error}=await sb.from(t).upsert(up);if(error)throw error}
+    if(del.length){const {error}=await sb.from(t).delete().in('id',del);if(error)throw error}
+    snap[t]=cur;
+  }
+}
+function loginView(){
+  $('#nav').innerHTML='';
+  $('#v').innerHTML='<div class="card"><h2>Painel da loja</h2><label>E-mail</label><input id="le" type="email" autocomplete="username"><label>Senha</label><input id="lp" type="password" autocomplete="current-password"><button class="b w" onclick="login()">Entrar</button></div>';
+}
+async function login(){
+  const {error}=await sb.auth.signInWithPassword({email:$('#le').value.trim(),password:$('#lp').value});
+  if(error)return alert('Não foi possível entrar: '+error.message);
+  init();
+}
+document.addEventListener('visibilitychange',async()=>{
+  if(document.hidden)return;if(CUST){if(tab=='loja'){await loadProducts();render()}return}if(!logged||(tab!='ped'&&tab!='loja'))return;
+  await chain;await pull();render();
+});
+const R=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+let tab='loja',q='',editP=null,editC=null,co={cid:'',addr:'',loc:null,pay:'Dinheiro',cash:'',obs:''};
+const items=()=>Object.entries(S.cart).map(([id,qt])=>({p:S.products.find(x=>x.id==id),qt})).filter(x=>x.p&&x.qt>0);
+const total=()=>items().reduce((s,x)=>s+x.p.p*x.qt,0);
+const count=()=>items().reduce((s,x)=>s+x.qt,0);
+const go=t=>{tab=t;render()};
+function getLoc(cb){
+  if(!navigator.geolocation)return alert('Este aparelho não oferece localização.');
+  navigator.geolocation.getCurrentPosition(p=>cb({lat:+p.coords.latitude.toFixed(6),lng:+p.coords.longitude.toFixed(6)}),()=>alert('Não foi possível obter a localização. Permita o acesso e tente de novo.'),{enableHighAccuracy:true,timeout:15000});
+}
+const mapUrl=l=>`https://www.google.com/maps?q=${l.lat},${l.lng}`;
+const th=p=>p.img?`<img class="ph" alt="" src="${p.img}">`:`<div class="ph">🛒</div>`;
+let pImg;
+function pickImg(inp){
+  const f=inp.files[0];if(!f)return;
+  const im=new Image(),u=URL.createObjectURL(f);
+  im.onload=()=>{const k=Math.min(1,240/Math.max(im.width,im.height)),c=document.createElement('canvas');
+    c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+    pImg=c.toDataURL('image/jpeg',.7);URL.revokeObjectURL(u);$('#pv').innerHTML=`<img class="ph" alt="" src="${pImg}">`;};
+  im.onerror=()=>alert('Não foi possível ler essa imagem.');im.src=u;
+}
+function printO(id){
+  const c=[...document.querySelectorAll('.ord')].filter(e=>id?e.id=='o-'+id:!e.querySelector('.tag.ok'));
+  if(!c.length)return alert('Nenhum pedido para imprimir.');
+  c.forEach(e=>e.classList.add('pp'));document.body.classList.add('pr');
+  window.onafterprint=()=>{document.body.classList.remove('pr');c.forEach(e=>e.classList.remove('pp'))};
+  window.print();
+}
+/* LOJA */
+function listHtml(){
+  const l=S.products.filter(p=>p.n.toLowerCase().includes(q.toLowerCase()));
+  if(!l.length)return '<p class="mu">Nenhum produto encontrado. Cadastre na aba Produtos.</p>';
+  return l.map(p=>`<div class="card row"><div class="it">${th(p)}<b>${esc(p.n)}</b><div class="mu">${R(p.p)} / ${esc(p.u)}</div></div>
+  <div class="q"><button onclick="add('${p.id}',-1)" aria-label="Menos">−</button><b>${S.cart[p.id]||0}</b><button onclick="add('${p.id}',1)" aria-label="Mais">+</button></div></div>`).join('');
+}
+function vLoja(){
+  return `<input placeholder="Buscar produto..." value="${esc(q)}" oninput="q=this.value;$('#pl').innerHTML=listHtml()"><div id="pl">${listHtml()}</div>
+  ${count()?`<button class="b w" onclick="go('cart')">Ver carrinho · ${count()} itens · ${R(total())}</button>`:''}`;
+}
+function add(id,d){S.cart[id]=Math.max(0,(S.cart[id]||0)+d);if(!S.cart[id])delete S.cart[id];save();render();}
+/* CARRINHO */
+function vCart(){
+  const it=items();
+  if(!it.length)return '<div class="card"><h2>Carrinho vazio</h2><p class="mu">Escolha produtos na aba Loja.</p><button class="b" onclick="go(\'loja\')">Ir para a loja</button></div>';
+  return `<h2>Carrinho</h2>${it.map(x=>`<div class="card row"><div class="it">${th(x.p)}<b>${esc(x.p.n)}</b><div class="mu">${R(x.p.p)} × ${x.qt} = ${R(x.p.p*x.qt)}</div></div>
+  <div class="q"><button onclick="add('${x.p.id}',-1)">−</button><b>${x.qt}</b><button onclick="add('${x.p.id}',1)">+</button></div></div>`).join('')}
+  <div class="card"><h2>Entrega e pagamento</h2>
+  <label>Cliente</label><select onchange="pick(this.value)"><option value="">Selecione...</option>${S.clients.map(c=>`<option value="${c.id}" ${co.cid==c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select>
+  ${S.clients.length?'':'<p class="mu">Nenhum cliente. <a href="#" onclick="go(\'cli\');return false">Cadastrar cliente</a></p>'}
+  <label>Endereço de entrega</label><textarea rows="2" oninput="co.addr=this.value">${esc(co.addr)}</textarea>
+  <button class="b s w" onclick="getLoc(l=>{co.loc=l;render()})">📍 ${co.loc?'Atualizar localização':'Usar minha localização'}</button>
+  ${co.loc?`<p class="mu">Local: <a target="_blank" rel="noopener" href="${mapUrl(co.loc)}">${co.loc.lat}, ${co.loc.lng}</a></p>`:''}
+  <label style="display:block;margin-top:10px">Forma de pagamento</label>
+  <select onchange="co.pay=this.value;render()">${['Dinheiro','Pix','Cartão'].map(x=>`<option ${co.pay==x?'selected':''}>${x}</option>`).join('')}</select>
+  ${co.pay=='Dinheiro'?`<label>Troco para quanto? (deixe vazio se não precisa)</label><input type="number" inputmode="decimal" min="0" step="0.01" value="${esc(co.cash)}" oninput="co.cash=this.value;trocoTxt()"><p id="tr" class="mu"></p>`:''}
+  <label>Observações</label><input value="${esc(co.obs)}" oninput="co.obs=this.value" placeholder="Ex.: portão azul">
+  <div class="row"><span>Total</span><span class="tot">${R(total())}</span></div><br>
+  <button class="b w" onclick="finish()">Finalizar pedido</button></div>`;
+}
+setTimeout(()=>{},0);
+function trocoTxt(){const e=$('#tr');if(!e)return;const c=parseFloat(co.cash);if(!c){e.textContent='';return}
+  e.textContent=c<total()?'⚠️ O valor é menor que o total.':'Troco a levar: '+R(c-total());}
+function pick(id){co.cid=id;const c=S.clients.find(x=>x.id==id);if(c){co.addr=c.a;co.loc=c.loc||null}render();}
+function finish(){
+  const it=items(),c=S.clients.find(x=>x.id==co.cid),t=total(),cash=parseFloat(co.cash)||0;
+  if(!c)return alert('Selecione o cliente.');
+  if(!co.addr.trim())return alert('Informe o endereço de entrega.');
+  if(co.pay=='Dinheiro'&&cash&&cash<t)return alert('O valor para troco é menor que o total.');
+  S.orders.unshift({id:uid(),date:new Date().toISOString(),cn:c.n,ph:c.t,addr:co.addr.trim(),loc:co.loc,
+    items:it.map(x=>({n:x.p.n,u:x.p.u,p:x.p.p,q:x.qt})),total:t,pay:co.pay,cash:co.pay=='Dinheiro'?cash:0,
+    troco:co.pay=='Dinheiro'&&cash?cash-t:0,obs:co.obs,done:false,st:'conf'});
+  S.cart={};co={cid:'',addr:'',loc:null,pay:'Dinheiro',cash:'',obs:''};save();go('ped');
+}
+/* PRODUTOS */
+function vProd(){
+  const p=S.products.find(x=>x.id==editP)||{};
+  return `<div class="card"><h2>${p.id?'Editar produto':'Novo produto'}</h2>
+  <label>Nome</label><input id="pn" value="${esc(p.n)}">
+  <div class="g2"><div><label>Preço (R$)</label><input id="pp" type="number" inputmode="decimal" step="0.01" min="0" value="${p.p??''}"></div>
+  <div><label>Unidade</label><select id="pu">${['un','kg','g','L','pct','cx'].map(u=>`<option ${p.u==u?'selected':''}>${u}</option>`).join('')}</select></div></div>
+  <div class="g2"><div><label>Categoria</label><input id="pc" list="cl2" value="${esc(p.c)}"><datalist id="cl2">${catList().map(x=>`<option value="${esc(x[0])}">`).join('')}</datalist></div><div><label>Código</label><input id="pk" value="${esc(p.cod)}"></div></div>
+  <label>Foto do produto</label><input id="pf" type="file" accept="image/*" onchange="pickImg(this)">
+  <div id="pv">${(pImg??p.img)?`<img class="ph" alt="" src="${pImg??p.img}">`:''}</div>
+  ${(pImg??p.img)?`<button class="d" onclick="pImg='';$('#pv').innerHTML=''">Remover foto</button>`:''}
+  <button class="b w" onclick="saveP()">Salvar produto</button></div>
+  <div class="card"><label>Importar planilha CSV (colunas: nome; preço; categoria; código; unidade)</label><input type="file" accept=".csv,.txt" onchange="impCSV(this)"></div>
+  ${S.products.map(x=>`<div class="card row"><div class="it">${th(x)}<b>${esc(x.n)}</b><div class="mu">${R(x.p)} / ${esc(x.u)}${x.c?' · '+esc(x.c):''}${x.cod?' · cód. '+esc(x.cod):''}</div></div>
+  <div><button class="b s" onclick="editP='${x.id}';pImg=undefined;render()">Editar</button><button class="d" onclick="delP('${x.id}')">Excluir</button></div></div>`).join('')}`;
+}
+function saveP(){
+  const n=$('#pn').value.trim(),pr=parseFloat($('#pp').value);
+  if(!n||isNaN(pr))return alert('Informe nome e preço.');
+  const o=S.products.find(x=>x.id==editP);
+  const im=pImg!==undefined?pImg:((o&&o.img)||'');
+  const ex={c:$('#pc').value.trim().toUpperCase(),cod:$('#pk').value.trim()};
+  if(o){Object.assign(o,{n,p:pr,u:$('#pu').value,img:im},ex)}else S.products.push({id:uid(),n,p:pr,u:$('#pu').value,img:im,...ex});
+  editP=null;pImg=undefined;save();render();
+}
+function delP(id){S.products=S.products.filter(x=>x.id!=id);delete S.cart[id];save();render();}
+/* CLIENTES */
+let cLoc=null;
+function vCli(){
+  const c=S.clients.find(x=>x.id==editC)||{};
+  return `<div class="card"><h2>${c.id?'Editar cliente':'Novo cliente'}</h2>
+  <label>Nome</label><input id="cn" value="${esc(c.n)}">
+  <label>Telefone / WhatsApp</label><input id="ct" type="tel" value="${esc(c.t)}" placeholder="(93) 99999-9999">
+  <label>Endereço (rua, número, bairro, referência)</label><textarea id="ca" rows="2">${esc(c.a)}</textarea>
+  <button class="b s w" onclick="getLoc(l=>{cLoc=l;$('#cl').textContent='📍 '+l.lat+', '+l.lng})">📍 Capturar localização atual</button>
+  <p id="cl" class="mu">${(cLoc||c.loc)?'📍 '+(cLoc||c.loc).lat+', '+(cLoc||c.loc).lng:''}</p>
+  <button class="b w" onclick="saveC()">Salvar cliente</button></div>
+  ${S.clients.map(x=>`<div class="card row"><div><b>${esc(x.n)}</b><div class="mu">${esc(x.t)}<br>${esc(x.a)}</div></div>
+  <div><button class="b s" onclick="editC='${x.id}';cLoc=null;render()">Editar</button><button class="d" onclick="S.clients=S.clients.filter(y=>y.id!='${x.id}');save();render()">Excluir</button></div></div>`).join('')}`;
+}
+function saveC(){
+  const n=$('#cn').value.trim(),a=$('#ca').value.trim();
+  if(!n||!a)return alert('Informe nome e endereço.');
+  const o=S.clients.find(x=>x.id==editC),d={n,t:$('#ct').value.trim(),a};
+  if(o){Object.assign(o,d);if(cLoc)o.loc=cLoc}else S.clients.push({id:uid(),...d,loc:cLoc});
+  editC=null;cLoc=null;save();render();
+}
+/* PEDIDOS */
+function vPed(){
+  if(!S.orders.length)return '<div class="card"><h2>Nenhum pedido ainda</h2><p class="mu">Os pedidos finalizados aparecem aqui.</p></div>';
+  return `<button class="b s w" style="margin-bottom:10px" onclick="printO()">🖨️ Imprimir pedidos pendentes</button>`+S.orders.map(o=>{
+    const msg=`Pedido de ${o.cn}\n`+o.items.map(i=>`${i.q}x ${i.n} - ${R(i.p*i.q)}`).join('\n')+`\nTotal: ${R(o.total)}\nPagamento: ${o.pay}`+(o.troco?` (troco para ${R(o.cash)}: levar ${R(o.troco)})`:'')+`\nEndereço: ${o.addr}`+(o.loc?`\nLocalização: ${mapUrl(o.loc)}`:'')+(o.obs?`\nObs: ${o.obs}`:'');
+    const ph=String(o.ph||'').replace(/\D/g,'');
+    return `<div class="card ord" id="o-${o.id}"><div class="row"><b>${esc(o.cn)}</b><span class="tag ${o.done?'ok':''}">${o.done?'Entregue':'Pendente'}</span></div>
+    <div class="mu">${new Date(o.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}</div>
+    <p>${o.items.map(i=>`${i.q}× ${esc(i.n)}`).join('<br>')}</p>
+    <div class="mu">${esc(o.addr)}${o.loc?` · <a target="_blank" rel="noopener" href="${mapUrl(o.loc)}">ver no mapa</a>`:''}</div>
+    <div class="row" style="margin-top:8px"><span class="mu">${o.pay}${o.troco?` · levar troco ${R(o.troco)} (de ${R(o.cash)})`:''}</span><span class="tot">${R(o.total)}</span></div>
+    ${o.obs?`<div class="mu">Obs: ${esc(o.obs)}</div>`:''}
+    <div class="row" style="margin-top:10px;justify-content:flex-start;flex-wrap:wrap">
+    <button class="b s" onclick="printO('${o.id}')">🖨️ Imprimir</button>
+    <button class="b s" onclick="tg('${o.id}')">${o.done?'Reabrir':'Marcar entregue'}</button>
+    ${ph?`<a class="b s" style="text-decoration:none;border-radius:8px;padding:11px 16px;font-weight:700" target="_blank" rel="noopener" href="https://wa.me/55${ph}?text=${encodeURIComponent(msg)}">WhatsApp</a>`:''}
+    <button class="d" onclick="S.orders=S.orders.filter(x=>x.id!='${o.id}');save();render()">Excluir</button></div></div>`}).join('');
+}
+function tg(id){const o=S.orders.find(x=>x.id==id);o.done=!o.done;save();render();}
+/* ===== MODO CLIENTE (app instalável): cadastro + pedidos ===== */
+const CFG=SB_URL.startsWith('http');let CUST=false,ip=null,me=null;
+try{me=JSON.parse(localStorage.getItem('mkme')||'null')}catch(e){}
+S.mine=S.mine||[];
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();ip=e;$('#ins').hidden=false});
+const rid=()=>crypto.randomUUID?crypto.randomUUID():uid()+uid()+uid()+uid()+uid()+uid();
+async function loadProducts(){
+  if(!sb)return;
+  const {data,error}=await sb.from('products').select('data');
+  if(!error&&data){S.products=data.map(r=>r.data);loc()}
+}
+const _vc=vCart;
+vCart=function(){
+  if(!CUST)return _vc();
+  if(me&&!co.addr)co.addr=me.a;
+  if(me&&!co.loc)co.loc=me.loc||null;
+  const h=_vc();
+  if(!items().length)return h;
+  const blk=me?`<p><b>${esc(me.n)}</b><br><span class="mu">${esc(me.t)}</span></p>`:`<p class="mu">Entre ou crie sua conta para finalizar o pedido.</p><button class="b s w" onclick="go('eu')">Entrar ou criar conta</button>`;
+  return h.replace(/<label>Cliente<\/label><select[\s\S]*?<\/select>\s*(<p class="mu">Nenhum cliente[\s\S]*?<\/p>)?/,()=>'<label>Entregar para</label>'+blk).replace('onclick="finish()"','onclick="finishC()"');
+};
+function mineHtml(l){
+  if(!l.length)return '<div class="card"><p class="mu">Você ainda não fez pedidos.</p></div>';
+  return l.map(o=>`<div class="card"><div class="row"><b>${R(o.total)}</b>${stTag(o)}</div>
+  <div class="mu">${new Date(o.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})} · ${esc(o.pay)}${o.troco?' · troco para '+R(o.cash):''}</div>
+  <p>${o.items.map(i=>`${i.q}× ${esc(i.n)}`).join('<br>')}</p></div>`).join('');
+}
+function vMeus(){setTimeout(loadMeus,0);return '<h2>Meus pedidos</h2><div id="mp">'+mineHtml(S.mine)+'</div>';}
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+
+/* ===== VITRINE (estilo catálogo) ===== */
+let cat='',ord='az',lim=60;
+const catList=()=>{const m={};S.products.forEach(p=>{const c=(p.c||'SEM CATEGORIA').toUpperCase();m[c]=(m[c]||0)+1});return Object.entries(m).sort((a,b)=>a[0].localeCompare(b[0],'pt-BR'))};
+const qtyBtn=p=>S.cart[p.id]?`<div class="q" style="justify-content:center"><button onclick="add('${p.id}',-1)" aria-label="Menos">−</button><b>${S.cart[p.id]}</b><button onclick="add('${p.id}',1)" aria-label="Mais">+</button></div>`:`<button class="b w" onclick="add('${p.id}',1)">Adicionar</button>`;
+listHtml=function(){
+  const t=q.toLowerCase(),l=S.products.filter(p=>(!cat||(p.c||'SEM CATEGORIA').toUpperCase()==cat)&&(p.n+' '+(p.cod||'')).toLowerCase().includes(t));
+  l.sort((a,b)=>ord=='az'?a.n.localeCompare(b.n,'pt-BR'):ord=='za'?b.n.localeCompare(a.n,'pt-BR'):ord=='lo'?a.p-b.p:b.p-a.p);
+  if(!l.length)return '<p class="mu">Nenhum produto encontrado.</p>';
+  return '<div class="pg">'+l.slice(0,lim).map(p=>`<div class="pcard"><div class="pimg">${p.img?`<img alt="" src="${p.img}">`:'🛒'}</div><div class="pname">${esc(p.n)}</div>${p.cod?`<div class="mu" style="font-size:12px">(Código ${esc(p.cod)})</div>`:''}<div class="pprice">${R(p.p)}<span class="mu" style="font:13px sans-serif"> / ${esc(p.u)}</span></div>${qtyBtn(p)}</div>`).join('')+'</div>'+(l.length>lim?`<button class="b s w" onclick="lim+=60;$('#pl').innerHTML=listHtml()">Mostrar mais (${l.length-lim})</button>`:'');
+};
+vLoja=function(){
+  const n=count();
+  return `<div class="sh"><img src="logo.png" alt="" onerror="this.remove()"><div><b class="sn">Mercado Mezzomo</b><div class="mu">Novo Progresso/PA</div></div></div>
+  <div class="srch"><input placeholder="Buscar produtos" value="${esc(q)}" oninput="q=this.value;lim=60;$('#pl').innerHTML=listHtml()">
+  <select aria-label="Categoria" onchange="cat=this.value;lim=60;$('#pl').innerHTML=listHtml()"><option value="">Todos (${S.products.length})</option>${catList().map(([c,k])=>`<option value="${esc(c)}" ${cat==c?'selected':''}>${esc(c)} (${k})</option>`).join('')}</select>
+  <select aria-label="Ordenar" onchange="ord=this.value;lim=60;$('#pl').innerHTML=listHtml()">${[['az','A-Z'],['za','Z-A'],['lo','Menor preço'],['hi','Maior preço']].map(([v,x])=>`<option value="${v}" ${ord==v?'selected':''}>Ordenar: ${x}</option>`).join('')}</select></div>
+  <div id="pl">${listHtml()}</div>
+  <button class="up" aria-label="Voltar ao topo" onclick="scrollTo({top:0,behavior:'smooth'})">↑</button>
+  ${n?`<button class="b cb" onclick="go('cart')">🛒 Ver carrinho · ${n} ${n>1?'itens':'item'} · ${R(total())}</button>`:''}`;
+};
+add=function(id,d){
+  S.cart[id]=Math.max(0,(S.cart[id]||0)+d);if(!S.cart[id])delete S.cart[id];
+  save();const y=scrollY;render();scrollTo(0,y);
+};
+function impCSV(inp){
+  const f=inp.files[0];if(!f)return;
+  f.text().then(t=>{
+    const L=t.replace(/^\uFEFF/,'').split(/\r?\n/).filter(x=>x.trim()),d=(L[0]||'').includes(';')?';':',';let n=0;
+    L.forEach(ln=>{
+      const c=ln.split(d).map(x=>x.replace(/^"|"$/g,'').trim()),s=(c[1]||'').replace(/[R$\s]/g,'');
+      const pr=s.includes(',')?parseFloat(s.replace(/\./g,'').replace(',','.')):parseFloat(s);
+      if(!c[0]||isNaN(pr))return;
+      const o=c[3]&&S.products.find(x=>x.cod==c[3]),r={n:c[0],p:pr,c:(c[2]||'').toUpperCase(),cod:c[3]||'',u:c[4]||'un'};
+      if(o)Object.assign(o,r);else S.products.push({id:rid(),img:'',...r});n++;
+    });
+    save();render();alert(n+' produtos importados ou atualizados.');
+  });
+}
+
+/* ===== CONTA DO CLIENTE: entrar com WhatsApp ou e-mail + senha ===== */
+const FAKE='@mercadomezzomo1-cmd.github.io'; /* usado só como identificador interno de quem entra com WhatsApp */
+const digits=v=>String(v).replace(/\D/g,'');
+function authEmail(v){
+  v=String(v).trim().toLowerCase();
+  if(v.includes('@'))return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)?v:'';
+  let d=digits(v);if(d.length>=10&&d.length<=11)d='55'+d;
+  return d.length>=12&&d.length<=13?d+FAKE:'';
+}
+let user=null,am='in';
+const wz=i=>{$('#aw').hidden=!i.value.includes('@')};
+const instTip='<p class="mu">Para instalar o app: no Android toque em "Instalar app" no topo; no iPhone toque em Compartilhar e depois em Adicionar à Tela de Início.</p>';
+const locBtn=`<button class="b s w" onclick="getLoc(x=>{cLoc=x;$('#cl').textContent='📍 '+x.lat+', '+x.lng})">📍 Usar minha localização</button>`;
+function vEu(){
+  if(user)return vPerfil();
+  const up=am=='up';
+  return `<div class="card"><h2>${up?'Criar conta':'Entrar'}</h2>
+  <div class="g2"><button class="b ${up?'s':''}" onclick="am='in';render()">Entrar</button><button class="b ${up?'':'s'}" onclick="am='up';render()">Criar conta</button></div><br>
+  ${up?'<label>Nome</label><input id="an" autocomplete="name">':''}
+  <label>WhatsApp (com DDD) ou e-mail</label><input id="al" autocomplete="username" ${up?'oninput="wz(this)"':''} placeholder="(93) 99999-9999 ou nome@email.com">
+  ${up?'<div id="aw" hidden><label>Seu WhatsApp (com DDD)</label><input id="at" type="tel" autocomplete="tel"></div>':''}
+  <label>Senha${up?' (mínimo 6 caracteres)':''}</label><input id="ap" type="password" autocomplete="${up?'new-password':'current-password'}">
+  ${up?`<label>Endereço (rua, número, bairro, referência)</label><textarea id="aa" rows="2" autocomplete="street-address"></textarea>${locBtn}<p id="cl" class="mu"></p>`:''}
+  <button class="b w" onclick="${up?'criarConta()':'entrar()'}">${up?'Criar conta':'Entrar'}</button></div>${instTip}${adm()}`;
+}
+function vPerfil(){
+  const m=me||{},l=cLoc||m.loc;
+  return `<div class="card"><h2>Minha conta</h2>${me?'':'<p class="mu">Complete seu cadastro para fazer pedidos.</p>'}
+  <label>Nome</label><input id="mn" value="${esc(m.n)}" autocomplete="name">
+  <label>WhatsApp (com DDD)</label><input id="mt" type="tel" value="${esc(m.t)}" autocomplete="tel">
+  <label>Endereço (rua, número, bairro, referência)</label><textarea id="ma" rows="2" autocomplete="street-address">${esc(m.a)}</textarea>
+  ${locBtn}<p id="cl" class="mu">${l?'📍 '+l.lat+', '+l.lng:''}</p>
+  <button class="b w" onclick="saveMe()">Salvar cadastro</button></div>
+  <button class="d" onclick="sair()">Sair da conta</button>${instTip}${adm()}`;
+}
+async function criarConta(){
+  if(!sb)return alert('Sem conexão. Tente de novo com internet.');
+  const n=$('#an').value.trim(),l=$('#al').value.trim(),p=$('#ap').value,a=$('#aa').value.trim(),mail=l.includes('@'),em=authEmail(l),tel=mail?$('#at').value.trim():l;
+  if(!n||!a)return alert('Preencha nome e endereço.');
+  if(!em)return alert('Informe um WhatsApp com DDD ou um e-mail válido.');
+  if(digits(tel).length<10)return alert('Informe seu WhatsApp com DDD.');
+  if(p.length<6)return alert('A senha precisa ter pelo menos 6 caracteres.');
+  const {data,error}=await sb.auth.signUp({email:em,password:p});
+  if(error)return alert(/registered|exists/i.test(error.message)?'Esse contato já tem conta. Use a aba Entrar.':'Não foi possível criar a conta: '+error.message);
+  if(!data.session)return alert('Conta criada, mas a loja precisa desligar a confirmação de e-mail no Supabase.');
+  user=data.user;
+  me={id:user.id,n,t:tel,e:mail?l.toLowerCase():'',a,loc:cLoc||null,date:new Date().toISOString()};
+  const r=await sb.from('clients').upsert({id:me.id,data:me});
+  if(r.error){me=null;return alert('Conta criada, mas o cadastro não foi salvo: '+r.error.message)}
+  cLoc=null;alert('Conta criada!');go(items().length?'cart':'loja');
+}
+async function entrar(){
+  if(!sb)return alert('Sem conexão. Tente de novo com internet.');
+  const em=authEmail($('#al').value);
+  if(!em)return alert('Informe um WhatsApp com DDD ou um e-mail válido.');
+  const {data,error}=await sb.auth.signInWithPassword({email:em,password:$('#ap').value});
+  if(error)return alert('Contato ou senha incorretos.');
+  user=data.user;await loadMe();go(items().length?'cart':'loja');
+}
+async function loadMe(){
+  const {data}=await sb.from('clients').select('data').eq('id',user.id).maybeSingle();
+  me=data?data.data:null;
+}
+async function saveMe(){
+  const n=$('#mn').value.trim(),t=$('#mt').value.trim(),a=$('#ma').value.trim();
+  if(!n||!a||digits(t).length<10)return alert('Informe nome, WhatsApp com DDD e endereço.');
+  const m={...(me||{}),id:user.id,n,t,a,loc:cLoc||(me&&me.loc)||null,date:(me&&me.date)||new Date().toISOString()};
+  const {error}=await sb.from('clients').upsert({id:m.id,data:m});
+  if(error)return alert('Não foi possível salvar o cadastro: '+error.message);
+  me=m;cLoc=null;alert('Cadastro salvo!');go(items().length?'cart':'loja');
+}
+async function sair(){await sb.auth.signOut();user=null;me=null;S.mine=[];loc();go('loja')}
+async function finishC(){
+  if(!user||!me){alert('Entre na sua conta e complete o cadastro para finalizar.');return go('eu')}
+  const it=items(),t=total(),cash=parseFloat(co.cash)||0;
+  if(!co.addr.trim())return alert('Informe o endereço de entrega.');
+  if(co.pay=='Dinheiro'&&cash&&cash<t)return alert('O valor para troco é menor que o total.');
+  const o={id:rid(),cid:user.id,date:new Date().toISOString(),cn:me.n,ph:me.t,addr:co.addr.trim(),loc:co.loc||null,
+    items:it.map(x=>({n:x.p.n,u:x.p.u,p:x.p.p,q:x.qt})),total:t,pay:co.pay,cash:co.pay=='Dinheiro'?cash:0,
+    troco:co.pay=='Dinheiro'&&cash?cash-t:0,obs:co.obs,done:false,st:'novo'};
+  const {error}=await sb.from('orders').insert({id:o.id,data:o});
+  if(error)return alert('Não foi possível enviar o pedido: '+error.message);
+  S.mine.unshift(o);S.cart={};co={cid:'',addr:'',loc:null,pay:'Dinheiro',cash:'',obs:''};save();
+  alert('Pedido enviado! A loja vai entrar em contato.');go('meus');
+}
+vMeus=function(){
+  if(!user)return '<div class="card"><p class="mu">Entre na sua conta para ver seus pedidos.</p><button class="b" onclick="go(\'eu\')">Entrar</button></div>';
+  setTimeout(loadMeus,0);return '<h2>Meus pedidos</h2><div id="mp">'+mineHtml(S.mine)+'</div>';
+};
+async function loadMeus(){
+  if(!sb||!user)return;
+  const {data,error}=await sb.from('orders').select('data').order('updated_at',{ascending:false}).limit(30);
+  if(!error&&data){S.mine=data.map(r=>r.data);loc();const e=$('#mp');if(e)e.innerHTML=mineHtml(S.mine)}
+}
+
+/* ===== PAINEL DA LOJA x APP DO CLIENTE ===== */
+const APP=document.documentElement.dataset.app||'cliente';let isAdmin=false;
+const adm=()=>isAdmin?'<p class="mu"><a href="admin.html">Abrir painel da loja</a></p>':'';
+const stOf=o=>o.st||(o.done?'ent':'novo');
+const stTag=o=>{const k=stOf(o);return `<span class="tag ${k=='conf'||k=='ent'?'ok':''}" ${k=='canc'?'style="background:var(--rd);color:#fff"':''}>${({novo:'Pedido recebido',conf:'Confirmado',ent:'Entregue',canc:'Cancelado'})[k]}</span>`};
+function navT(){return CUST?{loja:'Loja',cart:'Carrinho',eu:(user?'Minha conta':'Entrar'),meus:'Pedidos'}:{ped:'Pedidos',loja:'Balcão',cart:'Carrinho',prod:'Produtos',cli:'Clientes'}}
+function renderNav(){
+  const pend=CUST?0:S.orders.filter(o=>stOf(o)=='novo').length;
+  $('#nav').innerHTML=Object.entries(navT()).map(([k,v])=>`<button class="${tab==k?'on':''}" onclick="go('${k}')">${v}${k=='cart'&&count()?`<b>${count()}</b>`:''}${k=='ped'&&pend?`<b>${pend}</b>`:''}</button>`).join('');
+}
+function render(){
+  renderNav();
+  $('#v').innerHTML=({loja:vLoja,cart:vCart,prod:vProd,cli:vCli,ped:vPed,eu:vEu,meus:vMeus})[tab]();
+  window.scrollTo(0,0);
+}
+let pf='novo';
+vPed=function(){
+  const F=[['novo','Novos'],['conf','Confirmados'],['ent','Entregues'],['canc','Cancelados'],['todos','Todos']];
+  const cnt=k=>k=='todos'?S.orders.length:S.orders.filter(o=>stOf(o)==k).length;
+  const l=S.orders.filter(o=>pf=='todos'||stOf(o)==pf);
+  const bar=`<div class="fl">${F.map(([k,t])=>`<button class="${pf==k?'on':''}" onclick="pf='${k}';render()">${t} (${cnt(k)})</button>`).join('')}</div>`;
+  if(!l.length)return bar+'<div class="card"><p class="mu">Nenhum pedido nesta lista.</p></div>';
+  return bar+`<button class="b s w" style="margin-bottom:10px" onclick="printO()">🖨️ Imprimir pedidos desta lista</button>`+l.map(o=>{
+    const k=stOf(o),msg=`Pedido de ${o.cn}\n`+o.items.map(i=>`${i.q}x ${i.n} - ${R(i.p*i.q)}`).join('\n')+`\nTotal: ${R(o.total)}\nPagamento: ${o.pay}`+(o.troco?` (troco para ${R(o.cash)}: levar ${R(o.troco)})`:'')+`\nEndereço: ${o.addr}`+(o.loc?`\nLocalização: ${mapUrl(o.loc)}`:'')+(o.obs?`\nObs: ${o.obs}`:'');
+    const ph=digits(o.ph||''),B=(t,s,c)=>`<button class="b ${c||''}" onclick="setSt('${o.id}','${s}')">${t}</button>`;
+    const acts=k=='novo'?B('✔ Confirmar pedido','conf')+B('Cancelar','canc','s'):k=='conf'?B('Marcar entregue','ent')+B('Cancelar','canc','s'):B('Reabrir','conf','s');
+    return `<div class="card ord" id="o-${o.id}" data-st="${k}"><div class="row"><b>${esc(o.cn)}</b>${stTag(o)}</div>
+    <div class="mu">${new Date(o.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}${o.ph?' · '+esc(o.ph):''}</div>
+    <p>${o.items.map(i=>`${i.q}× ${esc(i.n)}`).join('<br>')}</p>
+    <div class="mu">${esc(o.addr)}${o.loc?` · <a target="_blank" rel="noopener" href="${mapUrl(o.loc)}">ver no mapa</a>`:''}</div>
+    <div class="row" style="margin-top:8px"><span class="mu">${o.pay}${o.troco?` · levar troco ${R(o.troco)} (de ${R(o.cash)})`:''}</span><span class="tot">${R(o.total)}</span></div>
+    ${o.obs?`<div class="mu">Obs: ${esc(o.obs)}</div>`:''}
+    <div class="row" style="margin-top:10px;justify-content:flex-start;flex-wrap:wrap">${acts}
+    <button class="b s" onclick="printO('${o.id}')">🖨️ Imprimir</button>
+    ${ph?`<a class="b s" style="text-decoration:none;border-radius:8px;padding:11px 16px;font-weight:700" target="_blank" rel="noopener" href="https://wa.me/${ph.length<=11?'55':''}${ph}?text=${encodeURIComponent(msg)}">WhatsApp</a>`:''}
+    <button class="d" onclick="S.orders=S.orders.filter(x=>x.id!='${o.id}');save();render()">Excluir</button></div></div>`}).join('');
+};
+function setSt(id,st){const o=S.orders.find(x=>x.id==id);if(!o)return;o.st=st;o.done=st=='ent';save();const y=scrollY;render();scrollTo(0,y)}
+printO=function(id){
+  const c=[...document.querySelectorAll('.ord')].filter(e=>!id||e.id=='o-'+id);
+  if(!c.length)return alert('Nenhum pedido para imprimir.');
+  c.forEach(e=>e.classList.add('pp'));document.body.classList.add('pr');
+  window.onafterprint=()=>{document.body.classList.remove('pr');c.forEach(e=>e.classList.remove('pp'))};
+  window.print();
+};
+/* avisa pedido novo: confere a cada 20 s */
+let knownO=null;
+function beep(){try{const a=new (window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=880;g.gain.value=.2;o.start();setTimeout(()=>{o.stop();a.close()},450)}catch(e){}}
+async function pollOrders(){
+  if(!logged||busy)return;
+  const {data,error}=await sb.from('orders').select('data');
+  if(error||!data||busy)return;
+  const L=data.map(r=>r.data).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const fresh=L.filter(o=>!knownO.has(o.id));
+  if(!fresh.length&&JSON.stringify(L)==JSON.stringify(S.orders))return;
+  S.orders=L;snap.orders=Object.fromEntries(L.map(r=>[r.id,JSON.stringify(r)]));L.forEach(o=>knownO.add(o.id));loc();
+  if(fresh.length){beep();document.title='('+fresh.length+' novo) Painel da loja';setTimeout(()=>document.title='Mercado Mezzomo • Loja',8000)}
+  if(tab=='ped'){const y=scrollY;render();scrollTo(0,y)}else renderNav();
+}
+async function init(){
+  if(!CFG){if(!S.products.length)S.products=SEED;if(APP=='loja')tab='ped';return render()}
+  let ses=null;
+  if(sb){try{ses=(await sb.auth.getSession()).data.session}catch(e){}}
+  if(APP=='loja'){
+    if(!sb){$('#v').innerHTML='<div class="card"><p class="mu">Sem conexão. Abra o painel com internet.</p></div>';return}
+    if(ses){
+      const {data:ok}=await sb.rpc('sou_admin');
+      if(ok){user=ses.user;logged=true;$('#lo').hidden=false;tab='ped';await pull();knownO=new Set(S.orders.map(o=>o.id));setInterval(pollOrders,20000);return render()}
+      await sb.auth.signOut();
+    }
+    return loginView();
+  }
+  if(ses){user=ses.user;const {data:ok}=await sb.rpc('sou_admin');isAdmin=!!ok}
+  CUST=true;tab='loja';me=null;
+  if(ZAP){$('#wa').href='https://wa.me/55'+digits(ZAP);$('#wa').hidden=false}
+  render();await loadProducts();if(user)await loadMe();render();
+}
+
+init();
+</script></body></html>

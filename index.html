@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR"><head><meta charset="utf-8">
+<html lang="pt-BR" data-app="cliente"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mercado Mezzomo</title>
 <link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#2f6b3a"><link rel="apple-touch-icon" href="icon-192.png">
@@ -52,6 +52,8 @@ a{color:var(--ac)}
 .cb{position:fixed;left:14px;right:76px;bottom:calc(66px + env(safe-area-inset-bottom,0px));z-index:4;box-shadow:0 2px 8px #0004}
 body{padding-bottom:140px}
 @media print{.wa,.up,.cb{display:none!important}}
+.fl{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px}.fl button{white-space:nowrap;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:16px;padding:7px 12px;font:600 13px inherit;font-family:inherit}.fl button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+@media print{.pp::before{content:"Mercado Mezzomo · Pedido";display:block;font-weight:700;margin-bottom:6px}}
 </style></head><body>
 <h1>🛒 Mercado Mezzomo <button class="b s" id="ins" hidden style="padding:6px 10px;font-size:13px;margin-left:6px" onclick="ip.prompt()">Instalar app</button> <button class="d" id="lo" hidden onclick="sb.auth.signOut().then(()=>location.reload())">Sair</button></h1>
 <main id="v"></main>
@@ -67,9 +69,9 @@ const SEED=[{id:'a1',n:'Arroz 5kg',p:28.9,u:'un'},{id:'a2',n:'Feijão carioca 1k
 const SB_URL='https://jfhyyizuziyxumtiebdn.supabase.co', SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmaHl5aXp1eml5eHVtdGllYmRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxMDY0NDAsImV4cCI6MjEwNzY4MjQ0MH0.-PCi3sXeLUeMh5RAPpLcNDLcbgCVRcntZB2IwHeDSvM';
 const ZAP=''; /* WhatsApp da loja: só números com DDD. Ex.: '93999999999' */
 const sb=(window.supabase&&SB_URL.startsWith('http'))?window.supabase.createClient(SB_URL,SB_KEY):null;
-const TB=['products','clients','orders'];let snap={},logged=false,chain=Promise.resolve();
+const TB=['products','clients','orders'];let snap={},logged=false,busy=0,chain=Promise.resolve();
 const loc=()=>{try{localStorage.setItem('mk',JSON.stringify(S))}catch(e){}};
-const save=()=>{loc();if(sb&&logged)chain=chain.then(push).catch(fail)};
+const save=()=>{loc();if(sb&&logged){busy++;chain=chain.then(push).catch(fail).finally(()=>busy--)}};
 const fail=e=>alert('Falha ao sincronizar: '+(e&&e.message||e));
 async function pull(){
   for(const t of TB){
@@ -92,7 +94,7 @@ async function push(){
 }
 function loginView(){
   $('#nav').innerHTML='';
-  $('#v').innerHTML='<div class="card"><h2>Entrar</h2><label>E-mail</label><input id="le" type="email" autocomplete="username"><label>Senha</label><input id="lp" type="password" autocomplete="current-password"><button class="b w" onclick="login()">Entrar</button></div>';
+  $('#v').innerHTML='<div class="card"><h2>Painel da loja</h2><label>E-mail</label><input id="le" type="email" autocomplete="username"><label>Senha</label><input id="lp" type="password" autocomplete="current-password"><button class="b w" onclick="login()">Entrar</button></div>';
 }
 async function login(){
   const {error}=await sb.auth.signInWithPassword({email:$('#le').value.trim(),password:$('#lp').value});
@@ -116,12 +118,6 @@ function getLoc(cb){
   navigator.geolocation.getCurrentPosition(p=>cb({lat:+p.coords.latitude.toFixed(6),lng:+p.coords.longitude.toFixed(6)}),()=>alert('Não foi possível obter a localização. Permita o acesso e tente de novo.'),{enableHighAccuracy:true,timeout:15000});
 }
 const mapUrl=l=>`https://www.google.com/maps?q=${l.lat},${l.lng}`;
-function render(){
-  const T=CUST?{loja:'Loja',cart:'Carrinho',eu:(user?'Minha conta':'Entrar'),meus:'Pedidos'}:{loja:'Loja',cart:'Carrinho',prod:'Produtos',cli:'Clientes',ped:'Pedidos'};
-  $('#nav').innerHTML=Object.entries(T).map(([k,v])=>`<button class="${tab==k?'on':''}" onclick="go('${k}')">${v}${k=='cart'&&count()?`<b>${count()}</b>`:''}</button>`).join('');
-  $('#v').innerHTML=({loja:vLoja,cart:vCart,prod:vProd,cli:vCli,ped:vPed,eu:vEu,meus:vMeus})[tab]();
-  window.scrollTo(0,0);
-}
 const th=p=>p.img?`<img class="ph" alt="" src="${p.img}">`:`<div class="ph">🛒</div>`;
 let pImg;
 function pickImg(inp){
@@ -181,7 +177,7 @@ function finish(){
   if(co.pay=='Dinheiro'&&cash&&cash<t)return alert('O valor para troco é menor que o total.');
   S.orders.unshift({id:uid(),date:new Date().toISOString(),cn:c.n,ph:c.t,addr:co.addr.trim(),loc:co.loc,
     items:it.map(x=>({n:x.p.n,u:x.p.u,p:x.p.p,q:x.qt})),total:t,pay:co.pay,cash:co.pay=='Dinheiro'?cash:0,
-    troco:co.pay=='Dinheiro'&&cash?cash-t:0,obs:co.obs,done:false});
+    troco:co.pay=='Dinheiro'&&cash?cash-t:0,obs:co.obs,done:false,st:'conf'});
   S.cart={};co={cid:'',addr:'',loc:null,pay:'Dinheiro',cash:'',obs:''};save();go('ped');
 }
 /* PRODUTOS */
@@ -273,7 +269,7 @@ vCart=function(){
 };
 function mineHtml(l){
   if(!l.length)return '<div class="card"><p class="mu">Você ainda não fez pedidos.</p></div>';
-  return l.map(o=>`<div class="card"><div class="row"><b>${R(o.total)}</b><span class="tag ${o.done?'ok':''}">${o.done?'Entregue':'Em preparo'}</span></div>
+  return l.map(o=>`<div class="card"><div class="row"><b>${R(o.total)}</b>${stTag(o)}</div>
   <div class="mu">${new Date(o.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})} · ${esc(o.pay)}${o.troco?' · troco para '+R(o.cash):''}</div>
   <p>${o.items.map(i=>`${i.q}× ${esc(i.n)}`).join('<br>')}</p></div>`).join('');
 }
@@ -330,7 +326,7 @@ function authEmail(v){
 }
 let user=null,am='in';
 const wz=i=>{$('#aw').hidden=!i.value.includes('@')};
-const instTip='<p class="mu">Para instalar o app: no Android toque em "Instalar app" no topo; no iPhone toque em Compartilhar e depois em Adicionar à Tela de Início.</p><p class="mu"><a href="#" onclick="location.hash=\'admin\';location.reload();return false">Área da loja</a></p>';
+const instTip='<p class="mu">Para instalar o app: no Android toque em "Instalar app" no topo; no iPhone toque em Compartilhar e depois em Adicionar à Tela de Início.</p>';
 const locBtn=`<button class="b s w" onclick="getLoc(x=>{cLoc=x;$('#cl').textContent='📍 '+x.lat+', '+x.lng})">📍 Usar minha localização</button>`;
 function vEu(){
   if(user)return vPerfil();
@@ -342,7 +338,7 @@ function vEu(){
   ${up?'<div id="aw" hidden><label>Seu WhatsApp (com DDD)</label><input id="at" type="tel" autocomplete="tel"></div>':''}
   <label>Senha${up?' (mínimo 6 caracteres)':''}</label><input id="ap" type="password" autocomplete="${up?'new-password':'current-password'}">
   ${up?`<label>Endereço (rua, número, bairro, referência)</label><textarea id="aa" rows="2" autocomplete="street-address"></textarea>${locBtn}<p id="cl" class="mu"></p>`:''}
-  <button class="b w" onclick="${up?'criarConta()':'entrar()'}">${up?'Criar conta':'Entrar'}</button></div>${instTip}`;
+  <button class="b w" onclick="${up?'criarConta()':'entrar()'}">${up?'Criar conta':'Entrar'}</button></div>${instTip}${adm()}`;
 }
 function vPerfil(){
   const m=me||{},l=cLoc||m.loc;
@@ -352,7 +348,7 @@ function vPerfil(){
   <label>Endereço (rua, número, bairro, referência)</label><textarea id="ma" rows="2" autocomplete="street-address">${esc(m.a)}</textarea>
   ${locBtn}<p id="cl" class="mu">${l?'📍 '+l.lat+', '+l.lng:''}</p>
   <button class="b w" onclick="saveMe()">Salvar cadastro</button></div>
-  <button class="d" onclick="sair()">Sair da conta</button>${instTip}`;
+  <button class="d" onclick="sair()">Sair da conta</button>${instTip}${adm()}`;
 }
 async function criarConta(){
   if(!sb)return alert('Sem conexão. Tente de novo com internet.');
@@ -398,7 +394,7 @@ async function finishC(){
   if(co.pay=='Dinheiro'&&cash&&cash<t)return alert('O valor para troco é menor que o total.');
   const o={id:rid(),cid:user.id,date:new Date().toISOString(),cn:me.n,ph:me.t,addr:co.addr.trim(),loc:co.loc||null,
     items:it.map(x=>({n:x.p.n,u:x.p.u,p:x.p.p,q:x.qt})),total:t,pay:co.pay,cash:co.pay=='Dinheiro'?cash:0,
-    troco:co.pay=='Dinheiro'&&cash?cash-t:0,obs:co.obs,done:false};
+    troco:co.pay=='Dinheiro'&&cash?cash-t:0,obs:co.obs,done:false,st:'novo'};
   const {error}=await sb.from('orders').insert({id:o.id,data:o});
   if(error)return alert('Não foi possível enviar o pedido: '+error.message);
   S.mine.unshift(o);S.cart={};co={cid:'',addr:'',loc:null,pay:'Dinheiro',cash:'',obs:''};save();
@@ -413,16 +409,80 @@ async function loadMeus(){
   const {data,error}=await sb.from('orders').select('data').order('updated_at',{ascending:false}).limit(30);
   if(!error&&data){S.mine=data.map(r=>r.data);loc();const e=$('#mp');if(e)e.innerHTML=mineHtml(S.mine)}
 }
+
+/* ===== PAINEL DA LOJA x APP DO CLIENTE ===== */
+const APP=document.documentElement.dataset.app||'cliente';let isAdmin=false;
+const adm=()=>isAdmin?'<p class="mu"><a href="admin.html">Abrir painel da loja</a></p>':'';
+const stOf=o=>o.st||(o.done?'ent':'novo');
+const stTag=o=>{const k=stOf(o);return `<span class="tag ${k=='conf'||k=='ent'?'ok':''}" ${k=='canc'?'style="background:var(--rd);color:#fff"':''}>${({novo:'Pedido recebido',conf:'Confirmado',ent:'Entregue',canc:'Cancelado'})[k]}</span>`};
+function navT(){return CUST?{loja:'Loja',cart:'Carrinho',eu:(user?'Minha conta':'Entrar'),meus:'Pedidos'}:{ped:'Pedidos',loja:'Balcão',cart:'Carrinho',prod:'Produtos',cli:'Clientes'}}
+function renderNav(){
+  const pend=CUST?0:S.orders.filter(o=>stOf(o)=='novo').length;
+  $('#nav').innerHTML=Object.entries(navT()).map(([k,v])=>`<button class="${tab==k?'on':''}" onclick="go('${k}')">${v}${k=='cart'&&count()?`<b>${count()}</b>`:''}${k=='ped'&&pend?`<b>${pend}</b>`:''}</button>`).join('');
+}
+function render(){
+  renderNav();
+  $('#v').innerHTML=({loja:vLoja,cart:vCart,prod:vProd,cli:vCli,ped:vPed,eu:vEu,meus:vMeus})[tab]();
+  window.scrollTo(0,0);
+}
+let pf='novo';
+vPed=function(){
+  const F=[['novo','Novos'],['conf','Confirmados'],['ent','Entregues'],['canc','Cancelados'],['todos','Todos']];
+  const cnt=k=>k=='todos'?S.orders.length:S.orders.filter(o=>stOf(o)==k).length;
+  const l=S.orders.filter(o=>pf=='todos'||stOf(o)==pf);
+  const bar=`<div class="fl">${F.map(([k,t])=>`<button class="${pf==k?'on':''}" onclick="pf='${k}';render()">${t} (${cnt(k)})</button>`).join('')}</div>`;
+  if(!l.length)return bar+'<div class="card"><p class="mu">Nenhum pedido nesta lista.</p></div>';
+  return bar+`<button class="b s w" style="margin-bottom:10px" onclick="printO()">🖨️ Imprimir pedidos desta lista</button>`+l.map(o=>{
+    const k=stOf(o),msg=`Pedido de ${o.cn}\n`+o.items.map(i=>`${i.q}x ${i.n} - ${R(i.p*i.q)}`).join('\n')+`\nTotal: ${R(o.total)}\nPagamento: ${o.pay}`+(o.troco?` (troco para ${R(o.cash)}: levar ${R(o.troco)})`:'')+`\nEndereço: ${o.addr}`+(o.loc?`\nLocalização: ${mapUrl(o.loc)}`:'')+(o.obs?`\nObs: ${o.obs}`:'');
+    const ph=digits(o.ph||''),B=(t,s,c)=>`<button class="b ${c||''}" onclick="setSt('${o.id}','${s}')">${t}</button>`;
+    const acts=k=='novo'?B('✔ Confirmar pedido','conf')+B('Cancelar','canc','s'):k=='conf'?B('Marcar entregue','ent')+B('Cancelar','canc','s'):B('Reabrir','conf','s');
+    return `<div class="card ord" id="o-${o.id}" data-st="${k}"><div class="row"><b>${esc(o.cn)}</b>${stTag(o)}</div>
+    <div class="mu">${new Date(o.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}${o.ph?' · '+esc(o.ph):''}</div>
+    <p>${o.items.map(i=>`${i.q}× ${esc(i.n)}`).join('<br>')}</p>
+    <div class="mu">${esc(o.addr)}${o.loc?` · <a target="_blank" rel="noopener" href="${mapUrl(o.loc)}">ver no mapa</a>`:''}</div>
+    <div class="row" style="margin-top:8px"><span class="mu">${o.pay}${o.troco?` · levar troco ${R(o.troco)} (de ${R(o.cash)})`:''}</span><span class="tot">${R(o.total)}</span></div>
+    ${o.obs?`<div class="mu">Obs: ${esc(o.obs)}</div>`:''}
+    <div class="row" style="margin-top:10px;justify-content:flex-start;flex-wrap:wrap">${acts}
+    <button class="b s" onclick="printO('${o.id}')">🖨️ Imprimir</button>
+    ${ph?`<a class="b s" style="text-decoration:none;border-radius:8px;padding:11px 16px;font-weight:700" target="_blank" rel="noopener" href="https://wa.me/${ph.length<=11?'55':''}${ph}?text=${encodeURIComponent(msg)}">WhatsApp</a>`:''}
+    <button class="d" onclick="S.orders=S.orders.filter(x=>x.id!='${o.id}');save();render()">Excluir</button></div></div>`}).join('');
+};
+function setSt(id,st){const o=S.orders.find(x=>x.id==id);if(!o)return;o.st=st;o.done=st=='ent';save();const y=scrollY;render();scrollTo(0,y)}
+printO=function(id){
+  const c=[...document.querySelectorAll('.ord')].filter(e=>!id||e.id=='o-'+id);
+  if(!c.length)return alert('Nenhum pedido para imprimir.');
+  c.forEach(e=>e.classList.add('pp'));document.body.classList.add('pr');
+  window.onafterprint=()=>{document.body.classList.remove('pr');c.forEach(e=>e.classList.remove('pp'))};
+  window.print();
+};
+/* avisa pedido novo: confere a cada 20 s */
+let knownO=null;
+function beep(){try{const a=new (window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=880;g.gain.value=.2;o.start();setTimeout(()=>{o.stop();a.close()},450)}catch(e){}}
+async function pollOrders(){
+  if(!logged||busy)return;
+  const {data,error}=await sb.from('orders').select('data');
+  if(error||!data||busy)return;
+  const L=data.map(r=>r.data).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const fresh=L.filter(o=>!knownO.has(o.id));
+  if(!fresh.length&&JSON.stringify(L)==JSON.stringify(S.orders))return;
+  S.orders=L;snap.orders=Object.fromEntries(L.map(r=>[r.id,JSON.stringify(r)]));L.forEach(o=>knownO.add(o.id));loc();
+  if(fresh.length){beep();document.title='('+fresh.length+' novo) Painel da loja';setTimeout(()=>document.title='Mercado Mezzomo • Loja',8000)}
+  if(tab=='ped'){const y=scrollY;render();scrollTo(0,y)}else renderNav();
+}
 async function init(){
-  if(!CFG){if(!S.products.length)S.products=SEED;return render()}
+  if(!CFG){if(!S.products.length)S.products=SEED;if(APP=='loja')tab='ped';return render()}
   let ses=null;
   if(sb){try{ses=(await sb.auth.getSession()).data.session}catch(e){}}
-  if(ses){
-    user=ses.user;
-    const {data:adm}=await sb.rpc('sou_admin');
-    if(adm){logged=true;$('#lo').hidden=false;await pull();return render()}
-    if(location.hash=='#admin'){await sb.auth.signOut();user=null;return loginView()}
-  }else if(location.hash=='#admin'&&sb)return loginView();
+  if(APP=='loja'){
+    if(!sb){$('#v').innerHTML='<div class="card"><p class="mu">Sem conexão. Abra o painel com internet.</p></div>';return}
+    if(ses){
+      const {data:ok}=await sb.rpc('sou_admin');
+      if(ok){user=ses.user;logged=true;$('#lo').hidden=false;tab='ped';await pull();knownO=new Set(S.orders.map(o=>o.id));setInterval(pollOrders,20000);return render()}
+      await sb.auth.signOut();
+    }
+    return loginView();
+  }
+  if(ses){user=ses.user;const {data:ok}=await sb.rpc('sou_admin');isAdmin=!!ok}
   CUST=true;tab='loja';me=null;
   if(ZAP){$('#wa').href='https://wa.me/55'+digits(ZAP);$('#wa').hidden=false}
   render();await loadProducts();if(user)await loadMe();render();
