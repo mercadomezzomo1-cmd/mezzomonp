@@ -39,10 +39,24 @@ a{color:var(--ac)}
 .it{display:flow-root}
 #pv .ph{float:none;width:110px;height:110px;margin:4px 0}
 @media print{h1,nav,button,a.b,.noprint{display:none!important}body{background:#fff;color:#000;padding:0;font-size:13px}body.pr .card:not(.pp){display:none}.pp{break-inside:avoid;border:1px dashed #000;background:#fff;color:#000;margin-bottom:14px}.pp .mu,.pp a{color:#000}}
+.sh{display:flex;align-items:center;gap:12px;margin:4px 0 12px}.sh img{width:72px;height:72px;border-radius:50%}.sn{font:700 21px Georgia,serif}
+.srch{display:grid;grid-template-columns:1fr 1fr;gap:0 8px}.srch input{grid-column:1/-1}
+.pg{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:10px}
+.pcard{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:4px}
+.pimg{aspect-ratio:1;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:40px;overflow:hidden}.pimg img{width:100%;height:100%;object-fit:contain}
+.pname{font-weight:700;font-size:14px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:35px}
+.pprice{font:700 18px Georgia,serif;margin-top:auto}
+.wa,.up{position:fixed;right:14px;width:48px;height:48px;border-radius:50%;border:0;display:flex;align-items:center;justify-content:center;font-size:22px;text-decoration:none;box-shadow:0 2px 8px #0004;z-index:4}
+.wa{background:#25d366;color:#fff;bottom:calc(66px + env(safe-area-inset-bottom,0px))}.wa[hidden]{display:none}
+.up{background:var(--card);color:var(--ac);bottom:calc(122px + env(safe-area-inset-bottom,0px));font-weight:700}
+.cb{position:fixed;left:14px;right:76px;bottom:calc(66px + env(safe-area-inset-bottom,0px));z-index:4;box-shadow:0 2px 8px #0004}
+body{padding-bottom:140px}
+@media print{.wa,.up,.cb{display:none!important}}
 </style></head><body>
 <h1>🛒 Mercado Mezzomo <button class="b s" id="ins" hidden style="padding:6px 10px;font-size:13px;margin-left:6px" onclick="ip.prompt()">Instalar app</button> <button class="d" id="lo" hidden onclick="sb.auth.signOut().then(()=>location.reload())">Sair</button></h1>
 <main id="v"></main>
 <nav id="nav"></nav>
+<a id="wa" class="wa" hidden target="_blank" rel="noopener" aria-label="Falar no WhatsApp">💬</a>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 const $=s=>document.querySelector(s);
@@ -51,6 +65,7 @@ try{S=Object.assign(S,JSON.parse(localStorage.getItem('mk')||'{}'))}catch(e){}
 const SEED=[{id:'a1',n:'Arroz 5kg',p:28.9,u:'un'},{id:'a2',n:'Feijão carioca 1kg',p:8.5,u:'un'},{id:'a3',n:'Banana prata',p:6.9,u:'kg'},{id:'a4',n:'Leite integral 1L',p:5.2,u:'un'}];
 /* ===== SUPABASE: cole aqui os dados do seu projeto (Project Settings > API) ===== */
 const SB_URL='https://jfhyyizuziyxumtiebdn.supabase.co', SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmaHl5aXp1eml5eHVtdGllYmRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxMDY0NDAsImV4cCI6MjEwNzY4MjQ0MH0.-PCi3sXeLUeMh5RAPpLcNDLcbgCVRcntZB2IwHeDSvM';
+const ZAP=''; /* WhatsApp da loja: só números com DDD. Ex.: '93999999999' */
 const sb=(window.supabase&&SB_URL.startsWith('http'))?window.supabase.createClient(SB_URL,SB_KEY):null;
 const TB=['products','clients','orders'];let snap={},logged=false,chain=Promise.resolve();
 const loc=()=>{try{localStorage.setItem('mk',JSON.stringify(S))}catch(e){}};
@@ -176,11 +191,13 @@ function vProd(){
   <label>Nome</label><input id="pn" value="${esc(p.n)}">
   <div class="g2"><div><label>Preço (R$)</label><input id="pp" type="number" inputmode="decimal" step="0.01" min="0" value="${p.p??''}"></div>
   <div><label>Unidade</label><select id="pu">${['un','kg','g','L','pct','cx'].map(u=>`<option ${p.u==u?'selected':''}>${u}</option>`).join('')}</select></div></div>
+  <div class="g2"><div><label>Categoria</label><input id="pc" list="cl2" value="${esc(p.c)}"><datalist id="cl2">${catList().map(x=>`<option value="${esc(x[0])}">`).join('')}</datalist></div><div><label>Código</label><input id="pk" value="${esc(p.cod)}"></div></div>
   <label>Foto do produto</label><input id="pf" type="file" accept="image/*" onchange="pickImg(this)">
   <div id="pv">${(pImg??p.img)?`<img class="ph" alt="" src="${pImg??p.img}">`:''}</div>
   ${(pImg??p.img)?`<button class="d" onclick="pImg='';$('#pv').innerHTML=''">Remover foto</button>`:''}
   <button class="b w" onclick="saveP()">Salvar produto</button></div>
-  ${S.products.map(x=>`<div class="card row"><div class="it">${th(x)}<b>${esc(x.n)}</b><div class="mu">${R(x.p)} / ${esc(x.u)}</div></div>
+  <div class="card"><label>Importar planilha CSV (colunas: nome; preço; categoria; código; unidade)</label><input type="file" accept=".csv,.txt" onchange="impCSV(this)"></div>
+  ${S.products.map(x=>`<div class="card row"><div class="it">${th(x)}<b>${esc(x.n)}</b><div class="mu">${R(x.p)} / ${esc(x.u)}${x.c?' · '+esc(x.c):''}${x.cod?' · cód. '+esc(x.cod):''}</div></div>
   <div><button class="b s" onclick="editP='${x.id}';pImg=undefined;render()">Editar</button><button class="d" onclick="delP('${x.id}')">Excluir</button></div></div>`).join('')}`;
 }
 function saveP(){
@@ -188,7 +205,8 @@ function saveP(){
   if(!n||isNaN(pr))return alert('Informe nome e preço.');
   const o=S.products.find(x=>x.id==editP);
   const im=pImg!==undefined?pImg:((o&&o.img)||'');
-  if(o){o.n=n;o.p=pr;o.u=$('#pu').value;o.img=im}else S.products.push({id:uid(),n,p:pr,u:$('#pu').value,img:im});
+  const ex={c:$('#pc').value.trim().toUpperCase(),cod:$('#pk').value.trim()};
+  if(o){Object.assign(o,{n,p:pr,u:$('#pu').value,img:im},ex)}else S.products.push({id:uid(),n,p:pr,u:$('#pu').value,img:im,...ex});
   editP=null;pImg=undefined;save();render();
 }
 function delP(id){S.products=S.products.filter(x=>x.id!=id);delete S.cart[id];save();render();}
@@ -307,9 +325,48 @@ async function init(){
   if(sb){try{ses=(await sb.auth.getSession()).data.session}catch(e){}}
   if(ses){logged=true;$('#lo').hidden=false;await pull();return render()}
   if(location.hash=='#admin'&&sb)return loginView();
-  CUST=true;tab='loja';render();await loadProducts();render();
+  CUST=true;tab='loja';if(ZAP){$('#wa').href='https://wa.me/55'+ZAP.replace(/\D/g,'');$('#wa').hidden=false}render();await loadProducts();render();
 }
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+
+/* ===== VITRINE (estilo catálogo) ===== */
+let cat='',ord='az',lim=60;
+const catList=()=>{const m={};S.products.forEach(p=>{const c=(p.c||'SEM CATEGORIA').toUpperCase();m[c]=(m[c]||0)+1});return Object.entries(m).sort((a,b)=>a[0].localeCompare(b[0],'pt-BR'))};
+const qtyBtn=p=>S.cart[p.id]?`<div class="q" style="justify-content:center"><button onclick="add('${p.id}',-1)" aria-label="Menos">−</button><b>${S.cart[p.id]}</b><button onclick="add('${p.id}',1)" aria-label="Mais">+</button></div>`:`<button class="b w" onclick="add('${p.id}',1)">Adicionar</button>`;
+listHtml=function(){
+  const t=q.toLowerCase(),l=S.products.filter(p=>(!cat||(p.c||'SEM CATEGORIA').toUpperCase()==cat)&&(p.n+' '+(p.cod||'')).toLowerCase().includes(t));
+  l.sort((a,b)=>ord=='az'?a.n.localeCompare(b.n,'pt-BR'):ord=='za'?b.n.localeCompare(a.n,'pt-BR'):ord=='lo'?a.p-b.p:b.p-a.p);
+  if(!l.length)return '<p class="mu">Nenhum produto encontrado.</p>';
+  return '<div class="pg">'+l.slice(0,lim).map(p=>`<div class="pcard"><div class="pimg">${p.img?`<img alt="" src="${p.img}">`:'🛒'}</div><div class="pname">${esc(p.n)}</div>${p.cod?`<div class="mu" style="font-size:12px">(Código ${esc(p.cod)})</div>`:''}<div class="pprice">${R(p.p)}<span class="mu" style="font:13px sans-serif"> / ${esc(p.u)}</span></div>${qtyBtn(p)}</div>`).join('')+'</div>'+(l.length>lim?`<button class="b s w" onclick="lim+=60;$('#pl').innerHTML=listHtml()">Mostrar mais (${l.length-lim})</button>`:'');
+};
+vLoja=function(){
+  const n=count();
+  return `<div class="sh"><img src="logo.png" alt="" onerror="this.remove()"><div><b class="sn">Mercado Mezzomo</b><div class="mu">Novo Progresso/PA</div></div></div>
+  <div class="srch"><input placeholder="Buscar produtos" value="${esc(q)}" oninput="q=this.value;lim=60;$('#pl').innerHTML=listHtml()">
+  <select aria-label="Categoria" onchange="cat=this.value;lim=60;$('#pl').innerHTML=listHtml()"><option value="">Todos (${S.products.length})</option>${catList().map(([c,k])=>`<option value="${esc(c)}" ${cat==c?'selected':''}>${esc(c)} (${k})</option>`).join('')}</select>
+  <select aria-label="Ordenar" onchange="ord=this.value;lim=60;$('#pl').innerHTML=listHtml()">${[['az','A-Z'],['za','Z-A'],['lo','Menor preço'],['hi','Maior preço']].map(([v,x])=>`<option value="${v}" ${ord==v?'selected':''}>Ordenar: ${x}</option>`).join('')}</select></div>
+  <div id="pl">${listHtml()}</div>
+  <button class="up" aria-label="Voltar ao topo" onclick="scrollTo({top:0,behavior:'smooth'})">↑</button>
+  ${n?`<button class="b cb" onclick="go('cart')">🛒 Ver carrinho · ${n} ${n>1?'itens':'item'} · ${R(total())}</button>`:''}`;
+};
+add=function(id,d){
+  S.cart[id]=Math.max(0,(S.cart[id]||0)+d);if(!S.cart[id])delete S.cart[id];
+  save();const y=scrollY;render();scrollTo(0,y);
+};
+function impCSV(inp){
+  const f=inp.files[0];if(!f)return;
+  f.text().then(t=>{
+    const L=t.replace(/^\uFEFF/,'').split(/\r?\n/).filter(x=>x.trim()),d=(L[0]||'').includes(';')?';':',';let n=0;
+    L.forEach(ln=>{
+      const c=ln.split(d).map(x=>x.replace(/^"|"$/g,'').trim()),s=(c[1]||'').replace(/[R$\s]/g,'');
+      const pr=s.includes(',')?parseFloat(s.replace(/\./g,'').replace(',','.')):parseFloat(s);
+      if(!c[0]||isNaN(pr))return;
+      const o=c[3]&&S.products.find(x=>x.cod==c[3]),r={n:c[0],p:pr,c:(c[2]||'').toUpperCase(),cod:c[3]||'',u:c[4]||'un'};
+      if(o)Object.assign(o,r);else S.products.push({id:rid(),img:'',...r});n++;
+    });
+    save();render();alert(n+' produtos importados ou atualizados.');
+  });
+}
 
 init();
 </script></body></html>
