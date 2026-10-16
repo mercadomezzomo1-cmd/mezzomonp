@@ -94,10 +94,10 @@ async function push(){
 }
 function loginView(){
   $('#nav').innerHTML='';
-  $('#v').innerHTML='<div class="card"><h2>Painel da loja</h2><label>E-mail</label><input id="le" type="email" autocomplete="username"><label>Senha</label><input id="lp" type="password" autocomplete="current-password"><button class="b w" onclick="login()">Entrar</button></div>';
+  $('#v').innerHTML='<div class="card"><h2>Painel da loja</h2><label>E-mail ou WhatsApp</label><input id="le" autocomplete="username"><label>Senha</label><input id="lp" type="password" autocomplete="current-password"><button class="b w" onclick="login()">Entrar</button></div>';
 }
 async function login(){
-  const {error}=await sb.auth.signInWithPassword({email:$('#le').value.trim(),password:$('#lp').value});
+  const {error}=await sb.auth.signInWithPassword({email:authEmail($('#le').value)||$('#le').value.trim(),password:$('#lp').value});
   if(error)return alert('Não foi possível entrar: '+error.message);
   init();
 }
@@ -478,7 +478,7 @@ async function init(){
     if(ses){
       const {data:ok}=await sb.rpc('sou_admin');
       if(ok){user=ses.user;logged=true;$('#lo').hidden=false;tab='ped';await pull();knownO=new Set(S.orders.map(o=>o.id));setInterval(pollOrders,20000);return render()}
-      await sb.auth.signOut();
+      await sb.auth.signOut();alert('Entrou, mas essa conta não é administradora da loja. Veja as instruções para adicionar o e-mail na tabela admins.');
     }
     return loginView();
   }
