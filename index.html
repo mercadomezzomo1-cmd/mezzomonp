@@ -72,24 +72,29 @@ nav button .bd{position:absolute;top:-4px;right:5px;min-width:18px;height:18px;p
 .wa,.cb{bottom:calc(80px + env(safe-area-inset-bottom,0px))}.up{bottom:calc(136px + env(safe-area-inset-bottom,0px))}
 .top{display:flex;align-items:center;gap:10px;padding:12px 14px;max-width:720px;margin:0 auto}.top img{width:50px;height:50px;border-radius:50%;flex:none}.top .sp{flex:1;min-width:0}.top b{font:700 21px/1.1 Georgia,serif;display:block}.top small{color:var(--mu);font-size:12.5px;display:block;line-height:1.3}
 #pcup{display:none}
+.cpw .cp{font-family:Arial,Helvetica,sans-serif;font-weight:600;line-height:1.3;color:#000;background:#fff;font-size:calc(12px*var(--ps,1));break-inside:avoid}
+.cpw .cp hr{border:0;border-top:1.5px dashed #000;margin:.55em 0}
+.cpw .cl{display:block;margin:0 auto .3em;width:var(--lw,40mm);max-width:100%;height:auto}
+.cpw .cn{text-align:center;font-size:1.45em;font-weight:800;line-height:1.15}
+.cpw .cs{text-align:center;font-size:.95em;font-weight:600}
+.cpw .cb2{text-align:center;font-size:1.5em;font-weight:800}
+.cpw .ci{font-size:1.05em;font-weight:700;margin-top:.35em}
+.cpw .cr{display:flex;justify-content:space-between;font-size:1.05em}
+.cpw .ct{font-size:1.4em;font-weight:800}
+.cpw .cbig{font-size:1.25em;font-weight:800;border:1.5px solid #000;padding:.25em;text-align:center;margin:.4em 0}
+.pvw{overflow-x:auto}.pvw .cp{width:72mm;max-width:100%;margin:0 auto;padding:3mm;border:1px solid #bbb}.pvw.a4 .cp{width:115mm;font-size:calc(14px*var(--ps,1))}
+#pcup{display:none}
 @media print{
 body.pr>*:not(#pcup){display:none!important}
-body.pr #pcup{display:block;color:#000;background:#fff}
-.cp{font:700 14px/1.35 Arial,Helvetica,sans-serif;color:#000;break-inside:avoid}
-.cp hr{border:0;border-top:2px dashed #000;margin:7px 0}
-.cl{display:block;margin:0 auto 4px;width:32mm;height:32mm}
-.cn{text-align:center;font-size:22px;font-weight:900;letter-spacing:.5px}
-.cs{text-align:center;font-size:13px;font-weight:700}
-.cb2{text-align:center;font-size:26px;font-weight:900}
-.ci{font-size:15px;font-weight:800;margin-top:5px}
-.cr{display:flex;justify-content:space-between;font-size:15px}
-.ct{font-size:24px;font-weight:900}
-.cbig{font-size:18px;font-weight:900;border:2px solid #000;padding:4px;text-align:center;margin:5px 0}
-body.t80 .cp{width:72mm;break-after:page;padding-bottom:6mm}
-body.a4 .cp{max-width:115mm;margin:0 auto 8mm;border:2px dashed #000;padding:8mm;font-size:16px}
+body.pr #pcup{display:block}
+body.t80 #pcup .cp{width:72mm;break-after:page;padding-bottom:6mm}
+body.a4 #pcup .cp{font-size:calc(14px*var(--ps,1));max-width:115mm;margin:0 auto 8mm;border:1.5px dashed #000;padding:8mm}
 }
+input[type=range]{padding:0;border:0;background:none}
+.top img{width:56px;height:56px;object-fit:contain;border-radius:12px;background:#fff}
+@media(max-width:420px){nav button .ic{width:46px}nav button{font-size:10.5px}}
 </style></head><body>
-<header class="top"><img src="logo.png" alt="" onerror="this.remove()"><div class="sp"><b>Mercado Mezzomo</b><small id="sub">Rua Jair Antonio Fortes, nº 626 · Novo Progresso/PA</small></div><button class="b s" id="ins" hidden style="padding:6px 10px;font-size:13px" onclick="ip.prompt()">Instalar app</button><button class="d" id="lo" hidden onclick="sb.auth.signOut().then(()=>location.reload())">Sair</button></header>
+<header class="top"><img id="hl" src="logo.png" alt="" onerror="this.style.display='none'"><div class="sp"><b>Mercado Mezzomo</b><small id="sub">Rua Jair Antonio Fortes, nº 626 · Novo Progresso/PA</small></div><button class="b s" id="ins" hidden style="padding:6px 10px;font-size:13px" onclick="ip.prompt()">Instalar app</button><button class="d" id="lo" hidden onclick="sb.auth.signOut().then(()=>location.reload())">Sair</button></header>
 <main id="v"></main>
 <nav id="nav"></nav>
 <a id="wa" class="wa" hidden target="_blank" rel="noopener" aria-label="Falar no WhatsApp">💬</a>
@@ -449,7 +454,7 @@ const APP=document.documentElement.dataset.app||'cliente';let isAdmin=false;
 const adm=()=>isAdmin?'<p class="mu"><a href="admin.html">Abrir painel da loja</a></p>':'';
 const stOf=o=>o.st||(o.done?'ent':'novo');
 const stTag=o=>{const k=stOf(o);return `<span class="tag ${k=='conf'||k=='ent'?'ok':''}" ${k=='canc'?'style="background:var(--rd);color:#fff"':''}>${({novo:'Pedido recebido',conf:'Confirmado',ent:'Entregue',canc:'Cancelado'})[k]}</span>`};
-function navT(){return CUST?{loja:'Loja',cart:'Carrinho',eu:(user?'Minha conta':'Entrar'),meus:'Pedidos'}:{ped:'Pedidos',loja:'Balcão',cart:'Carrinho',prod:'Produtos',cli:'Clientes'}}
+function navT(){return CUST?{loja:'Loja',cart:'Carrinho',eu:(user?'Minha conta':'Entrar'),meus:'Pedidos'}:{ped:'Pedidos',loja:'Balcão',cart:'Carrinho',prod:'Produtos',cli:'Clientes',cfg:'Ajustes'}}
 const ICO={
   loja:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
   bal:'<path d="M3.5 9 5 4h14l1.5 5"/><path d="M4.5 9v11h15V9"/><path d="M3.5 9a2.8 2.8 0 0 0 5.5 0 2.8 2.8 0 0 0 6 0 2.8 2.8 0 0 0 5.5 0"/>',
@@ -468,7 +473,7 @@ function renderNav(){
 }
 function render(){
   renderNav();
-  $('#v').innerHTML=({loja:vLoja,cart:vCart,prod:vProd,cli:vCli,ped:vPed,eu:vEu,meus:vMeus})[tab]();
+  $('#v').innerHTML=({loja:vLoja,cart:vCart,prod:vProd,cli:vCli,ped:vPed,eu:vEu,meus:vMeus,cfg:vCfg})[tab]();
   window.scrollTo(0,0);
 }
 let pf='novo';
@@ -478,7 +483,7 @@ vPed=function(){
   const l=S.orders.filter(o=>pf=='todos'||stOf(o)==pf);
   const bar=`<div class="fl">${F.map(([k,t])=>`<button class="${pf==k?'on':''}" onclick="pf='${k}';render()">${t} (${cnt(k)})</button>`).join('')}</div>`;
   if(!l.length)return bar+'<div class="card"><p class="mu">Nenhum pedido nesta lista.</p></div>';
-  return bar+`<div class="row" style="margin-bottom:10px"><select style="margin:0" aria-label="Formato de impressão" onchange="setFmt(this.value)"><option value="a4" ${fmt=='a4'?'selected':''}>Impressão: A4</option><option value="t80" ${fmt=='t80'?'selected':''}>Impressão: bobina 80 mm</option></select><button class="b s" style="white-space:nowrap" onclick="printO()">🖨️ Imprimir lista</button></div>`+l.map(o=>{
+  return bar+`<div class="row" style="margin-bottom:10px"><select style="margin:0" aria-label="Formato de impressão" onchange="setFmt(this.value)"><option value="a4" ${fmt=='a4'?'selected':''}>Impressão: A4</option><option value="t80" ${fmt=='t80'?'selected':''}>Impressão: bobina 80 mm</option></select><span class="q"><button onclick="bump(-5)" aria-label="Diminuir letras">A−</button><b class="psv">${Math.round(psc[fmt]*100)}%</b><button onclick="bump(5)" aria-label="Aumentar letras">A+</button></span><button class="b s" style="white-space:nowrap" onclick="printO()">🖨️ Imprimir lista</button></div>`+l.map(o=>{
     const k=stOf(o),msg=`Pedido de ${o.cn}\n`+o.items.map(i=>`${i.q}x ${i.n} - ${R(i.p*i.q)}`).join('\n')+`\nTotal: ${R(o.total)}\nPagamento: ${o.pay}`+(o.troco?` (troco para ${R(o.cash)}: levar ${R(o.troco)})`:'')+`\nEndereço: ${o.addr}`+(o.loc?`\nLocalização: ${mapUrl(o.loc)}`:'')+(o.obs?`\nObs: ${o.obs}`:'');
     const ph=digits(o.ph||''),B=(t,s,c)=>`<button class="b ${c||''}" onclick="setSt('${o.id}','${s}')">${t}</button>`;
     const acts=k=='novo'?B('✔ Confirmar pedido','conf')+B('Cancelar','canc','s'):k=='conf'?B('Marcar entregue','ent')+B('Cancelar','canc','s'):B('Reabrir','conf','s');
@@ -522,21 +527,21 @@ async function init(){
     if(!sb){$('#v').innerHTML='<div class="card"><p class="mu">Sem conexão. Abra o painel com internet.</p></div>';return}
     if(ses){
       const {data:ok}=await sb.rpc('sou_admin');
-      if(ok){user=ses.user;logged=true;$('#lo').hidden=false;tab='ped';await pull();knownO=new Set(S.orders.map(o=>o.id));setInterval(pollOrders,10000);wake();return render()}
+      if(ok){user=ses.user;logged=true;$('#lo').hidden=false;tab='ped';await pull();await loadCfg();applyEmp();knownO=new Set(S.orders.map(o=>o.id));setInterval(pollOrders,10000);wake();return render()}
       await sb.auth.signOut();alert('Entrou, mas essa conta não é administradora da loja. Veja as instruções para adicionar o e-mail na tabela admins.');
     }
     return loginView();
   }
   if(ses){user=ses.user;const {data:ok}=await sb.rpc('sou_admin');isAdmin=!!ok}
   CUST=true;tab='loja';me=null;
-  if(ZAP){$('#wa').href='https://wa.me/55'+digits(ZAP);$('#wa').hidden=false}
+  await loadCfg();applyEmp();if(tel()){$('#wa').href='https://wa.me/'+waNum(tel());$('#wa').hidden=false}
   render();await loadProducts();if(user)await loadMe();render();
 }
 
 /* ===== ALARME QUE INSISTE + IMPRESSÃO A4 / BOBINA 80 mm ===== */
 let AC=null,muteUntil=0,fmt='a4';
 try{fmt=localStorage.getItem('fmt')||'a4'}catch(e){}
-const setFmt=v=>{fmt=v;try{localStorage.setItem('fmt',v)}catch(e){}};
+const setFmt=v=>{fmt=v;try{localStorage.setItem('fmt',v)}catch(e){}document.querySelectorAll('.psv').forEach(e=>e.textContent=Math.round((psc[fmt]||1)*100)+'%');if(typeof refPrev=='function')refPrev()};
 const unlock=()=>{try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state=='suspended')AC.resume()}catch(e){}};
 ['click','touchstart','keydown'].forEach(ev=>addEventListener(ev,unlock,{passive:true}));
 function beep(){
@@ -572,15 +577,47 @@ printO=function(id){
   window.print();
 };
 
-/* ===== EMPRESA, CUPOM, BUSCA DE PRODUTOS E CORREÇÃO DE VALORES ===== */
-const EMP={n:'Mercado Mezzomo',e:'Rua Jair Antonio Fortes, nº 626',c:'Novo Progresso/PA'};
+/* ===== DADOS DA EMPRESA, CUPOM AJUSTÁVEL E LOGOTIPO ===== */
 const LOGO_C='data:image/png;base64,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';
+const EMP0={n:'Mercado Mezzomo',cnpj:'',e:'Rua Jair Antonio Fortes, nº 626',c:'Novo Progresso/PA',tel:'',msg:'Obrigado pela preferência!\nDeus seja louvado',logo:'',lw:40,th:165};
+let EMP={...EMP0},psc={a4:1,t80:1};
+try{Object.assign(EMP,JSON.parse(localStorage.getItem('mkcfg')||'{}'))}catch(e){}
+try{Object.assign(psc,JSON.parse(localStorage.getItem('psc')||'{}'))}catch(e){}
+const tel=()=>EMP.tel||ZAP;
+const waNum=v=>{const d=digits(v);return d.length<=11?'55'+d:d};
 const fmtTel=v=>{const d=digits(v);return d.length==11?`(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`:d};
-if(ZAP){const s=$('#sub');if(s)s.textContent+=' · '+fmtTel(ZAP)}
-function cupom(o){
+const fmtCnpj=v=>{const d=digits(v);return d.length==14?d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5'):String(v).trim()};
+async function loadCfg(){
+  if(!sb)return;
+  const {data,error}=await sb.from('config').select('data').eq('id','empresa').maybeSingle();
+  if(!error&&data&&data.data){EMP={...EMP0,...data.data};try{localStorage.setItem('mkcfg',JSON.stringify(EMP))}catch(e){}}
+}
+function applyEmp(){
+  document.title=EMP.n+(APP=='loja'?' • Loja':'');
+  const b=document.querySelector('.top b'),s=$('#sub'),h=$('#hl');
+  if(b)b.textContent=EMP.n;
+  if(h){h.style.display='';h.src=EMP.logo||'logo.png'}
+  if(s)s.textContent=(APP=='loja'?'Painel da loja · ':'')+[EMP.e,EMP.c,tel()?fmtTel(tel()):''].filter(Boolean).join(' · ');
+}
+const bwCache={};
+function bwLogo(src,th){
+  return new Promise(res=>{
+    const k=src.slice(-60)+'|'+th;if(bwCache[k])return res(bwCache[k]);
+    const im=new Image();
+    im.onload=()=>{
+      const w=500,h=Math.round(im.height/im.width*w),c=document.createElement('canvas');c.width=w;c.height=h;
+      const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.imageSmoothingQuality='high';x.drawImage(im,0,0,w,h);
+      const d=x.getImageData(0,0,w,h),p=d.data;
+      for(let i=0;i<p.length;i+=4){const v=(.299*p[i]+.587*p[i+1]+.114*p[i+2])<th?0:255;p[i]=p[i+1]=p[i+2]=v;p[i+3]=255}
+      x.putImageData(d,0,0);bwCache[k]=c.toDataURL('image/png');res(bwCache[k]);
+    };
+    im.onerror=()=>res(LOGO_C);im.src=src;
+  });
+}
+function cupom(o,logo){
   const dt=new Date(o.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
-  return `<div class="cp"><img class="cl" src="${LOGO_C}" alt="">
-  <div class="cn">${EMP.n.toUpperCase()}</div><div class="cs">${EMP.e}</div><div class="cs">${EMP.c}${ZAP?' · '+fmtTel(ZAP):''}</div>
+  return `<div class="cp"><img class="cl" src="${logo}" alt="">
+  <div class="cn">${esc(EMP.n.toUpperCase())}</div>${EMP.cnpj?`<div class="cs">CNPJ: ${esc(EMP.cnpj)}</div>`:''}<div class="cs">${esc(EMP.e)}</div><div class="cs">${esc(EMP.c)}${tel()?' · '+fmtTel(tel()):''}</div>
   <hr><div class="cb2">PEDIDO #${o.id.slice(-4).toUpperCase()}</div><div class="cs">${dt}</div><hr>
   <div><b>Cliente:</b> ${esc(o.cn)}</div>${o.ph?`<div><b>Tel:</b> ${esc(o.ph)}</div>`:''}<div><b>Endereço:</b> ${esc(o.addr)}</div><hr>
   ${o.items.map(i=>`<div class="ci">${esc(i.n)}</div><div class="cr"><span>${i.q} x ${R(i.p)}</span><b>${R(i.p*i.q)}</b></div>`).join('')}<hr>
@@ -588,19 +625,75 @@ function cupom(o){
   <div><b>Pagamento:</b> ${esc(o.pay)}</div>
   ${o.troco?`<div><b>Troco para:</b> ${R(o.cash)}</div><div class="cbig">LEVAR TROCO: ${R(o.troco)}</div>`:''}
   ${o.obs?`<div><b>Obs:</b> ${esc(o.obs)}</div>`:''}<hr>
-  <div class="cs">Obrigado pela preferência!<br>Deus seja louvado</div></div>`;
+  <div class="cs">${String(EMP.msg||'').split('\n').map(esc).join('<br>')}</div></div>`;
+}
+const sampleOrder=()=>({id:'00000A3F9',date:new Date().toISOString(),cn:'Maria da Silva',ph:'(93) 99999-9999',addr:'Rua das Flores, 100 - Centro',items:[{n:'ARROZ TIPO 1 5KG',u:'un',p:28.9,q:1},{n:'BANANA PRATA',u:'kg',p:6.9,q:2}],total:42.7,pay:'Dinheiro',cash:50,troco:7.3,obs:'Portão azul'});
+async function doPrint(L){
+  let st=$('#pgs');if(!st){st=document.createElement('style');st.id='pgs';document.head.appendChild(st)}
+  st.textContent=fmt=='t80'?'@page{size:80mm auto;margin:2mm}':'@page{size:A4;margin:12mm}';
+  const logo=await bwLogo(EMP.logo||'logo.png',EMP.th);
+  const box=document.createElement('div');box.id='pcup';box.className='cpw';
+  box.style.setProperty('--ps',psc[fmt]);box.style.setProperty('--lw',EMP.lw+'mm');
+  box.innerHTML=L.map(o=>cupom(o,logo)).join('');document.body.appendChild(box);
+  document.body.classList.add('pr',fmt);
+  window.onafterprint=()=>{document.body.classList.remove('pr','a4','t80');box.remove()};
+  const im=box.querySelector('img');if(im&&im.decode)await im.decode().catch(()=>{});
+  window.print();
 }
 printO=function(id){
   const L=[...document.querySelectorAll('.ord')].filter(e=>!id||e.id=='o-'+id).map(e=>S.orders.find(o=>'o-'+o.id==e.id)).filter(Boolean);
   if(!L.length)return alert('Nenhum pedido para imprimir.');
-  let st=$('#pgs');if(!st){st=document.createElement('style');st.id='pgs';document.head.appendChild(st)}
-  st.textContent=fmt=='t80'?'@page{size:80mm auto;margin:2mm}':'@page{size:A4;margin:12mm}';
-  const box=document.createElement('div');box.id='pcup';box.innerHTML=L.map(cupom).join('');document.body.appendChild(box);
-  document.body.classList.add('pr',fmt);
-  window.onafterprint=()=>{document.body.classList.remove('pr','a4','t80');box.remove()};
-  const im=box.querySelector('img');
-  (im&&im.decode?im.decode().catch(()=>{}):Promise.resolve()).then(()=>window.print());
+  doPrint(L);
 };
+function bump(d){
+  psc[fmt]=Math.min(1.6,Math.max(.5,Math.round((psc[fmt]+d/100)*100)/100));
+  try{localStorage.setItem('psc',JSON.stringify(psc))}catch(e){}
+  document.querySelectorAll('.psv').forEach(e=>e.textContent=Math.round(psc[fmt]*100)+'%');refPrev();
+}
+async function refPrev(){
+  const el=$('#pv2');if(!el)return;
+  const logo=await bwLogo(EMP.logo||'logo.png',EMP.th);
+  el.className='cpw pvw '+fmt;el.style.setProperty('--ps',psc[fmt]);el.style.setProperty('--lw',EMP.lw+'mm');
+  el.innerHTML=cupom(sampleOrder(),logo);
+}
+ICO.cfg='<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>';
+vCfg=function(){
+  const E=EMP,inp=(id,l,v,ex)=>`<label>${l}</label><input id="${id}" value="${esc(v)}" ${ex||''}>`;
+  setTimeout(refPrev,0);
+  return `<div class="card"><h2>Dados da empresa</h2>
+  ${inp('ce-n','Nome da empresa',E.n)}
+  ${inp('ce-cnpj','CNPJ',E.cnpj,'inputmode="numeric" placeholder="00.000.000/0000-00" onblur="this.value=fmtCnpj(this.value)"')}
+  ${inp('ce-e','Endereço (rua e número)',E.e)}${inp('ce-c','Cidade / UF',E.c)}${inp('ce-t','Telefone / WhatsApp (com DDD)',E.tel,'type="tel"')}
+  <label>Mensagem no fim do cupom</label><textarea id="ce-m" rows="2">${esc(E.msg)}</textarea>
+  <label>Logotipo</label><div class="row" style="justify-content:flex-start;align-items:flex-start"><img id="lgp" alt="" src="${E.logo||'logo.png'}" style="width:90px;height:90px;object-fit:contain;background:#fff;border-radius:10px;border:1px solid var(--bd)"><div style="flex:1"><input type="file" accept="image/*" onchange="pickLogo(this)"><button class="d" onclick="EMP.logo='';$('#lgp').src='logo.png';refPrev()">Usar logotipo padrão</button></div></div></div>
+  <div class="card"><h2>Impressão do cupom</h2>
+  <label>Papel</label><select onchange="setFmt(this.value)"><option value="a4" ${fmt=='a4'?'selected':''}>A4</option><option value="t80" ${fmt=='t80'?'selected':''}>Bobina 80 mm (Bematech)</option></select>
+  <label>Tamanho das letras (neste aparelho)</label><div class="q" style="justify-content:flex-start;margin-bottom:8px"><button onclick="bump(-5)" aria-label="Diminuir letras">A−</button><b class="psv">${Math.round(psc[fmt]*100)}%</b><button onclick="bump(5)" aria-label="Aumentar letras">A+</button></div>
+  <label>Tamanho do logotipo: <b id="lwv">${E.lw}</b> mm</label><input type="range" min="20" max="70" value="${E.lw}" oninput="EMP.lw=+this.value;$('#lwv').textContent=this.value;refPrev()">
+  <label>Contraste do logotipo (preto e branco)</label><input type="range" min="100" max="230" value="${E.th}" oninput="EMP.th=+this.value;refPrev()">
+  <p class="mu">Prévia do cupom (tamanho real):</p><div id="pv2" class="cpw pvw"></div><br>
+  <div class="g2"><button class="b" onclick="saveEmp()">Salvar ajustes</button><button class="b s" onclick="doPrint([sampleOrder()])">🖨️ Imprimir teste</button></div></div>`;
+};
+function pickLogo(inp){
+  const f=inp.files[0];if(!f)return;
+  const im=new Image(),u=URL.createObjectURL(f);
+  im.onload=()=>{
+    const k=Math.min(1,500/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);
+    const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);
+    EMP.logo=c.toDataURL('image/jpeg',.9);URL.revokeObjectURL(u);$('#lgp').src=EMP.logo;refPrev();
+  };
+  im.onerror=()=>alert('Não foi possível ler essa imagem.');im.src=u;
+}
+async function saveEmp(){
+  const g=i=>$('#'+i).value.trim();
+  Object.assign(EMP,{n:g('ce-n')||EMP0.n,cnpj:fmtCnpj(g('ce-cnpj')),e:g('ce-e'),c:g('ce-c'),tel:g('ce-t'),msg:$('#ce-m').value.trim()});
+  try{localStorage.setItem('mkcfg',JSON.stringify(EMP))}catch(e){}
+  applyEmp();
+  if(!sb)return alert('Ajustes salvos neste aparelho.');
+  const {error}=await sb.from('config').upsert({id:'empresa',data:EMP,updated_at:new Date().toISOString()});
+  alert(error?'Salvo neste aparelho, mas não foi possível salvar no Supabase ('+error.message+'). Rode o SQL da tabela config e tente de novo.':'Ajustes salvos!');
+}
+
 /* produtos: busca para edição + importação sem inverter preço e código */
 let pq='',plim=40;
 function prodRows(){
@@ -647,5 +740,6 @@ function impCSV(inp){
   });
 }
 
+applyEmp();
 init();
 </script></body></html>

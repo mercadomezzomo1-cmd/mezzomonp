@@ -45,3 +45,11 @@ create policy "todos veem produtos" on products for select to anon, authenticate
 create policy "cliente cadastro proprio" on clients for all to authenticated using (id = auth.uid()::text) with check (id = auth.uid()::text);
 create policy "cliente envia pedido" on orders for insert to authenticated with check (data->>'cid' = auth.uid()::text);
 create policy "cliente ve seus pedidos" on orders for select to authenticated using (data->>'cid' = auth.uid()::text);
+
+-- Dados da empresa (nome, CNPJ, endereço, logotipo): todos leem, só o administrador altera
+create table if not exists config (id text primary key, data jsonb not null, updated_at timestamptz default now());
+alter table config enable row level security;
+drop policy if exists "todos veem config" on config;
+drop policy if exists "admin config" on config;
+create policy "todos veem config" on config for select to anon, authenticated using (true);
+create policy "admin config" on config for all to authenticated using (public.sou_admin()) with check (public.sou_admin());
