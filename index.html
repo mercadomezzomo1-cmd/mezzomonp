@@ -49,7 +49,7 @@ let S={products:[],clients:[],orders:[],cart:{}};
 try{S=Object.assign(S,JSON.parse(localStorage.getItem('mk')||'{}'))}catch(e){}
 if(!S.products.length)S.products=[{id:'a1',n:'Arroz 5kg',p:28.9,u:'un'},{id:'a2',n:'Feijão carioca 1kg',p:8.5,u:'un'},{id:'a3',n:'Banana prata',p:6.9,u:'kg'},{id:'a4',n:'Leite integral 1L',p:5.2,u:'un'}];
 /* ===== SUPABASE: cole aqui os dados do seu projeto (Project Settings > API) ===== */
-const SB_URL='COLE_AQUI_A_PROJECT_URL', SB_KEY='COLE_AQUI_A_ANON_PUBLIC_KEY';
+const SB_URL='https://jfhyyizuziyxumtiebdn.supabase.co', SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmaHl5aXp1eml5eHVtdGllYmRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxMDY0NDAsImV4cCI6MjEwNzY4MjQ0MH0.-PCi3sXeLUeMh5RAPpLcNDLcbgCVRcntZB2IwHeDSvM';
 const sb=(window.supabase&&SB_URL.startsWith('http'))?window.supabase.createClient(SB_URL,SB_KEY):null;
 const TB=['products','clients','orders'];let snap={},logged=false,chain=Promise.resolve();
 const loc=()=>{try{localStorage.setItem('mk',JSON.stringify(S))}catch(e){}};
