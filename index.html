@@ -54,6 +54,7 @@ body{padding-bottom:140px}
 @media print{.wa,.up,.cb{display:none!important}}
 .fl{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px}.fl button{white-space:nowrap;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:16px;padding:7px 12px;font:600 13px inherit;font-family:inherit}.fl button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
 @media print{.pp::before{content:"Mercado Mezzomo · Pedido";display:block;font-weight:700;margin-bottom:6px}}
+.gps{position:fixed;left:14px;right:14px;top:calc(12px + env(safe-area-inset-top,0px));background:var(--card);color:var(--tx);border:2px solid var(--ac);border-radius:10px;padding:12px;z-index:20;box-shadow:0 2px 10px #0005;text-align:center;font-weight:700}
 </style></head><body>
 <h1>🛒 Mercado Mezzomo <button class="b s" id="ins" hidden style="padding:6px 10px;font-size:13px;margin-left:6px" onclick="ip.prompt()">Instalar app</button> <button class="d" id="lo" hidden onclick="sb.auth.signOut().then(()=>location.reload())">Sair</button></h1>
 <main id="v"></main>
@@ -115,7 +116,22 @@ const count=()=>items().reduce((s,x)=>s+x.qt,0);
 const go=t=>{tab=t;render()};
 function getLoc(cb){
   if(!navigator.geolocation)return alert('Este aparelho não oferece localização.');
-  navigator.geolocation.getCurrentPosition(p=>cb({lat:+p.coords.latitude.toFixed(6),lng:+p.coords.longitude.toFixed(6)}),()=>alert('Não foi possível obter a localização. Permita o acesso e tente de novo.'),{enableHighAccuracy:true,timeout:15000});
+  const box=document.createElement('div');box.className='gps';box.textContent='📡 Buscando sinal de GPS…';document.body.appendChild(box);
+  let best=null,done=false,id,tm;
+  const stop=()=>{done=true;navigator.geolocation.clearWatch(id);clearTimeout(tm);box.remove()};
+  const fin=()=>{if(done)return;stop();if(!best)return alert('Não foi possível obter a localização. Vá para um local aberto e tente de novo.');cb(best)};
+  const err=e=>{
+    if(done)return;if(best)return fin();stop();
+    alert(e.code==1?'Permissão negada. Ative a localização do navegador (cadeado ao lado do endereço) e tente de novo.':e.code==2?'Sinal de GPS indisponível. Vá para um local aberto e tente de novo.':'Tempo esgotado. Tente de novo em um local aberto.');
+  };
+  box.onclick=fin;
+  id=navigator.geolocation.watchPosition(p=>{
+    const a=Math.round(p.coords.accuracy);
+    if(!best||a<best.acc)best={lat:+p.coords.latitude.toFixed(6),lng:+p.coords.longitude.toFixed(6),acc:a};
+    box.innerHTML='📡 Precisão: ±'+best.acc+' m<br><small>Toque aqui para usar esta posição</small>';
+    if(best.acc<=25)fin();
+  },err,{enableHighAccuracy:true,maximumAge:0,timeout:20000});
+  tm=setTimeout(fin,20000);
 }
 const mapUrl=l=>`https://www.google.com/maps?q=${l.lat},${l.lng}`;
 const th=p=>p.img?`<img class="ph" alt="" src="${p.img}">`:`<div class="ph">🛒</div>`;
@@ -158,7 +174,7 @@ function vCart(){
   ${S.clients.length?'':'<p class="mu">Nenhum cliente. <a href="#" onclick="go(\'cli\');return false">Cadastrar cliente</a></p>'}
   <label>Endereço de entrega</label><textarea rows="2" oninput="co.addr=this.value">${esc(co.addr)}</textarea>
   <button class="b s w" onclick="getLoc(l=>{co.loc=l;render()})">📍 ${co.loc?'Atualizar localização':'Usar minha localização'}</button>
-  ${co.loc?`<p class="mu">Local: <a target="_blank" rel="noopener" href="${mapUrl(co.loc)}">${co.loc.lat}, ${co.loc.lng}</a></p>`:''}
+  ${co.loc?`<p class="mu">Local: <a target="_blank" rel="noopener" href="${mapUrl(co.loc)}">${co.loc.lat}, ${co.loc.lng}</a>${co.loc.acc?' (±'+co.loc.acc+' m)':''}</p>`:''}
   <label style="display:block;margin-top:10px">Forma de pagamento</label>
   <select onchange="co.pay=this.value;render()">${['Dinheiro','Pix','Cartão'].map(x=>`<option ${co.pay==x?'selected':''}>${x}</option>`).join('')}</select>
   ${co.pay=='Dinheiro'?`<label>Troco para quanto? (deixe vazio se não precisa)</label><input type="number" inputmode="decimal" min="0" step="0.01" value="${esc(co.cash)}" oninput="co.cash=this.value;trocoTxt()"><p id="tr" class="mu"></p>`:''}
@@ -214,7 +230,7 @@ function vCli(){
   <label>Nome</label><input id="cn" value="${esc(c.n)}">
   <label>Telefone / WhatsApp</label><input id="ct" type="tel" value="${esc(c.t)}" placeholder="(93) 99999-9999">
   <label>Endereço (rua, número, bairro, referência)</label><textarea id="ca" rows="2">${esc(c.a)}</textarea>
-  <button class="b s w" onclick="getLoc(l=>{cLoc=l;$('#cl').textContent='📍 '+l.lat+', '+l.lng})">📍 Capturar localização atual</button>
+  <button class="b s w" onclick="getLoc(l=>{cLoc=l;$('#cl').textContent='📍 '+l.lat+', '+l.lng+(l.acc?' (±'+l.acc+' m)':'')})">📍 Capturar localização atual</button>
   <p id="cl" class="mu">${(cLoc||c.loc)?'📍 '+(cLoc||c.loc).lat+', '+(cLoc||c.loc).lng:''}</p>
   <button class="b w" onclick="saveC()">Salvar cliente</button></div>
   ${S.clients.map(x=>`<div class="card row"><div><b>${esc(x.n)}</b><div class="mu">${esc(x.t)}<br>${esc(x.a)}</div></div>
@@ -236,7 +252,7 @@ function vPed(){
     return `<div class="card ord" id="o-${o.id}"><div class="row"><b>${esc(o.cn)}</b><span class="tag ${o.done?'ok':''}">${o.done?'Entregue':'Pendente'}</span></div>
     <div class="mu">${new Date(o.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}</div>
     <p>${o.items.map(i=>`${i.q}× ${esc(i.n)}`).join('<br>')}</p>
-    <div class="mu">${esc(o.addr)}${o.loc?` · <a target="_blank" rel="noopener" href="${mapUrl(o.loc)}">ver no mapa</a>`:''}</div>
+    <div class="mu">${esc(o.addr)}${o.loc?` · <a target="_blank" rel="noopener" href="${mapUrl(o.loc)}">ver no mapa</a>${o.loc.acc?' (±'+o.loc.acc+' m)':''}`:''}</div>
     <div class="row" style="margin-top:8px"><span class="mu">${o.pay}${o.troco?` · levar troco ${R(o.troco)} (de ${R(o.cash)})`:''}</span><span class="tot">${R(o.total)}</span></div>
     ${o.obs?`<div class="mu">Obs: ${esc(o.obs)}</div>`:''}
     <div class="row" style="margin-top:10px;justify-content:flex-start;flex-wrap:wrap">
@@ -327,7 +343,7 @@ function authEmail(v){
 let user=null,am='in';
 const wz=i=>{$('#aw').hidden=!i.value.includes('@')};
 const instTip='<p class="mu">Para instalar o app: no Android toque em "Instalar app" no topo; no iPhone toque em Compartilhar e depois em Adicionar à Tela de Início.</p>';
-const locBtn=`<button class="b s w" onclick="getLoc(x=>{cLoc=x;$('#cl').textContent='📍 '+x.lat+', '+x.lng})">📍 Usar minha localização</button>`;
+const locBtn=`<button class="b s w" onclick="getLoc(x=>{cLoc=x;$('#cl').textContent='📍 '+x.lat+', '+x.lng+(x.acc?' (±'+x.acc+' m)':'')})">📍 Usar minha localização</button>`;
 function vEu(){
   if(user)return vPerfil();
   const up=am=='up';
@@ -346,7 +362,7 @@ function vPerfil(){
   <label>Nome</label><input id="mn" value="${esc(m.n)}" autocomplete="name">
   <label>WhatsApp (com DDD)</label><input id="mt" type="tel" value="${esc(m.t)}" autocomplete="tel">
   <label>Endereço (rua, número, bairro, referência)</label><textarea id="ma" rows="2" autocomplete="street-address">${esc(m.a)}</textarea>
-  ${locBtn}<p id="cl" class="mu">${l?'📍 '+l.lat+', '+l.lng:''}</p>
+  ${locBtn}<p id="cl" class="mu">${l?'📍 '+l.lat+', '+l.lng+(l.acc?' (±'+l.acc+' m)':''):''}</p>
   <button class="b w" onclick="saveMe()">Salvar cadastro</button></div>
   <button class="d" onclick="sair()">Sair da conta</button>${instTip}${adm()}`;
 }
@@ -439,7 +455,7 @@ vPed=function(){
     return `<div class="card ord" id="o-${o.id}" data-st="${k}"><div class="row"><b>${esc(o.cn)}</b>${stTag(o)}</div>
     <div class="mu">${new Date(o.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}${o.ph?' · '+esc(o.ph):''}</div>
     <p>${o.items.map(i=>`${i.q}× ${esc(i.n)}`).join('<br>')}</p>
-    <div class="mu">${esc(o.addr)}${o.loc?` · <a target="_blank" rel="noopener" href="${mapUrl(o.loc)}">ver no mapa</a>`:''}</div>
+    <div class="mu">${esc(o.addr)}${o.loc?` · <a target="_blank" rel="noopener" href="${mapUrl(o.loc)}">ver no mapa</a>${o.loc.acc?' (±'+o.loc.acc+' m)':''}`:''}</div>
     <div class="row" style="margin-top:8px"><span class="mu">${o.pay}${o.troco?` · levar troco ${R(o.troco)} (de ${R(o.cash)})`:''}</span><span class="tot">${R(o.total)}</span></div>
     ${o.obs?`<div class="mu">Obs: ${esc(o.obs)}</div>`:''}
     <div class="row" style="margin-top:10px;justify-content:flex-start;flex-wrap:wrap">${acts}
