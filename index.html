@@ -308,7 +308,7 @@ function impCSV(inp){
       const c=ln.split(d).map(x=>x.replace(/^"|"$/g,'').trim()),s=(c[1]||'').replace(/[R$\s]/g,'');
       const pr=s.includes(',')?parseFloat(s.replace(/\./g,'').replace(',','.')):parseFloat(s);
       if(!c[0]||isNaN(pr))return;
-      const o=c[3]&&S.products.find(x=>x.cod==c[3]),r={n:c[0],p:pr,c:(c[2]||'').toUpperCase(),cod:c[3]||'',u:c[4]||'un'};
+      const o=c[3]&&S.products.find(x=>x.cod==c[3]),r={n:c[0],p:pr,c:(c[2]||'').toUpperCase(),cod:c[3]||'',u:c[4]||'un',...(/^https?:/.test(c[5]||'')?{img:c[5]}:{})};
       if(o)Object.assign(o,r);else S.products.push({id:rid(),img:'',...r});n++;
     });
     save();render();alert(n+' produtos importados ou atualizados.');
