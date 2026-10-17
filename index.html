@@ -93,8 +93,12 @@ body.a4 #pcup .cp{font-size:calc(14px*var(--ps,1));max-width:115mm;margin:0 auto
 input[type=range]{padding:0;border:0;background:none}
 .top img{width:56px;height:56px;object-fit:contain;border-radius:12px;background:none}
 @media(max-width:420px){nav button .ic{width:46px}nav button{font-size:10.5px}}
+.acc{width:44px;height:44px;border-radius:50%;border:2px solid var(--ac);background:var(--ac2);color:var(--ac);display:flex;align-items:center;justify-content:center;position:relative;flex:none;padding:0;cursor:pointer}
+.acc[hidden]{display:none}.acc svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.acc.on{background:var(--ac);color:#fff}.acc.on svg{stroke:#fff}
+.acc i{position:absolute;top:-1px;right:-1px;width:12px;height:12px;border-radius:50%;background:#25a244;border:2px solid var(--bg)}.acc i[hidden]{display:none}
 </style></head><body>
-<header class="top"><img id="hl" src="logo.png" alt="" onerror="this.style.display='none'"><div class="sp"><b>Mercado Mezzomo</b><small id="sub">Rua Jair Antonio Fortes, nº 626 · Novo Progresso/PA</small></div><button class="b s" id="ins" hidden style="padding:6px 10px;font-size:13px" onclick="ip.prompt()">Instalar app</button><button class="d" id="lo" hidden onclick="sb.auth.signOut().then(()=>location.reload())">Sair</button></header>
+<header class="top"><img id="hl" src="logo.png" alt="" onerror="this.style.display='none'"><div class="sp"><b>Mercado Mezzomo</b><small id="sub">Rua Jair Antonio Fortes, nº 626 · Novo Progresso/PA</small></div><button class="b s" id="ins" hidden style="padding:6px 10px;font-size:13px" onclick="ip.prompt()">Instalar app</button><button class="d" id="lo" hidden onclick="sb.auth.signOut().then(()=>location.reload())">Sair</button><button class="acc" id="acc" hidden onclick="go('eu')" aria-label="Minha conta"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg><i hidden></i></button></header>
 <main id="v"></main>
 <nav id="nav"></nav>
 <a id="wa" class="wa" hidden target="_blank" rel="noopener" aria-label="Falar no WhatsApp">💬</a>
@@ -223,7 +227,7 @@ function vCart(){
 setTimeout(()=>{},0);
 function trocoTxt(){const e=$('#tr');if(!e)return;const c=parseFloat(co.cash);if(!c){e.textContent='';return}
   e.textContent=c<total()?'⚠️ O valor é menor que o total.':'Troco a levar: '+R(c-total());}
-function pick(id){co.cid=id;const c=S.clients.find(x=>x.id==id);if(c){co.addr=c.a;co.loc=c.loc||null}render();}
+function pick(id){co.cid=id;const c=S.clients.find(x=>x.id==id);if(c){co.addr=c.a;co.loc=c.loc||null;if(c.ref&&!co.obs)co.obs=c.ref}render();}
 function finish(){
   const it=items(),c=S.clients.find(x=>x.id==co.cid),t=total(),cash=parseFloat(co.cash)||0;
   if(!c)return alert('Selecione o cliente.');
@@ -270,7 +274,7 @@ function vCli(){
   <button class="b s w" onclick="gpsFill(r=>{cLoc=r.loc;fillAddr(r);autoSaveMe(r)})">📍 Capturar localização atual</button>
   <p id="cl" class="mu">${(cLoc||c.loc)?'📍 '+(cLoc||c.loc).lat+', '+(cLoc||c.loc).lng:''}</p>
   <button class="b w" onclick="saveC()">Salvar cliente</button></div>
-  ${S.clients.map(x=>`<div class="card row"><div><b>${esc(x.n)}</b><div class="mu">${esc(x.t)}<br>${esc(x.a)}</div></div>
+  ${S.clients.map(x=>`<div class="card row"><div><b>${esc(x.n)}</b><div class="mu">${esc(x.t)}<br>${esc(x.a)}${x.ref?'<br>Obs: '+esc(x.ref):''}</div></div>
   <div><button class="b s" onclick="editC='${x.id}';cLoc=null;render()">Editar</button><button class="d" onclick="S.clients=S.clients.filter(y=>y.id!='${x.id}');save();render()">Excluir</button></div></div>`).join('')}`;
 }
 function saveC(){
@@ -314,6 +318,7 @@ const _vc=vCart;
 vCart=function(){
   if(!CUST)return _vc();
   if(me&&!co.addr)co.addr=me.a;
+  if(me&&!co.obs&&me.ref)co.obs=me.ref;
   if(me&&!co.loc)co.loc=me.loc||null;
   const h=_vc();
   if(!items().length)return h;
@@ -367,44 +372,6 @@ let user=null,am='in';
 const wz=i=>{$('#aw').hidden=!i.value.includes('@')};
 const instTip='<p class="mu">Para instalar o app: no Android toque em "Instalar app" no topo; no iPhone toque em Compartilhar e depois em Adicionar à Tela de Início.</p>';
 const locBtn=`<button class="b s w" onclick="gpsFill(r=>{cLoc=r.loc;fillAddr(r);autoSaveMe(r)})">📍 Usar minha localização</button>`;
-function vEu(){
-  if(user)return vPerfil();
-  const up=am=='up';
-  return `<div class="card"><h2>${up?'Criar conta':'Entrar'}</h2>
-  <div class="g2"><button class="b ${up?'s':''}" onclick="am='in';render()">Entrar</button><button class="b ${up?'':'s'}" onclick="am='up';render()">Criar conta</button></div><br>
-  ${up?'<label>Nome</label><input id="an" autocomplete="name">':''}
-  <label>WhatsApp (com DDD) ou e-mail</label><input id="al" autocomplete="username" ${up?'oninput="wz(this)"':''} placeholder="(93) 99999-9999 ou nome@email.com">
-  ${up?'<div id="aw" hidden><label>Seu WhatsApp (com DDD)</label><input id="at" type="tel" autocomplete="tel"></div>':''}
-  <label>Senha${up?' (mínimo 6 caracteres)':''}</label><input id="ap" type="password" autocomplete="${up?'new-password':'current-password'}">
-  ${up?`<label>Endereço (rua, número, bairro, referência)</label><textarea id="aa" rows="2" autocomplete="street-address"></textarea>${locBtn}<p id="cl" class="mu"></p>`:''}
-  <button class="b w" onclick="${up?'criarConta()':'entrar()'}">${up?'Criar conta':'Entrar'}</button></div>${instTip}${adm()}`;
-}
-function vPerfil(){
-  const m=me||{},l=cLoc||m.loc;
-  return `<div class="card"><h2>Minha conta</h2>${me?'':'<p class="mu">Complete seu cadastro para fazer pedidos.</p>'}
-  <label>Nome</label><input id="mn" value="${esc(m.n)}" autocomplete="name">
-  <label>WhatsApp (com DDD)</label><input id="mt" type="tel" value="${esc(m.t)}" autocomplete="tel">
-  <label>Endereço (rua, número, bairro, referência)</label><textarea id="ma" rows="2" autocomplete="street-address">${esc(m.a)}</textarea>
-  ${locBtn}<p id="cl" class="mu">${l?'📍 '+l.lat+', '+l.lng+(l.acc?' (±'+l.acc+' m)':''):''}</p>
-  <button class="b w" onclick="saveMe()">Salvar cadastro</button></div>
-  <button class="d" onclick="sair()">Sair da conta</button>${instTip}${adm()}`;
-}
-async function criarConta(){
-  if(!sb)return alert('Sem conexão. Tente de novo com internet.');
-  const n=$('#an').value.trim(),l=$('#al').value.trim(),p=$('#ap').value,a=$('#aa').value.trim(),mail=l.includes('@'),em=authEmail(l),tel=mail?$('#at').value.trim():l;
-  if(!n||!a)return alert('Preencha nome e endereço.');
-  if(!em)return alert('Informe um WhatsApp com DDD ou um e-mail válido.');
-  if(digits(tel).length<10)return alert('Informe seu WhatsApp com DDD.');
-  if(p.length<6)return alert('A senha precisa ter pelo menos 6 caracteres.');
-  const {data,error}=await sb.auth.signUp({email:em,password:p});
-  if(error)return alert(/registered|exists/i.test(error.message)?'Esse contato já tem conta. Use a aba Entrar.':'Não foi possível criar a conta: '+error.message);
-  if(!data.session)return alert('Conta criada, mas a loja precisa desligar a confirmação de e-mail no Supabase.');
-  user=data.user;
-  me={id:user.id,n,t:tel,e:mail?l.toLowerCase():'',a,loc:cLoc||null,date:new Date().toISOString()};
-  const r=await sb.from('clients').upsert({id:me.id,data:me});
-  if(r.error){me=null;return alert('Conta criada, mas o cadastro não foi salvo: '+r.error.message)}
-  cLoc=null;alert('Conta criada!');go(items().length?'cart':'loja');
-}
 async function entrar(){
   if(!sb)return alert('Sem conexão. Tente de novo com internet.');
   const em=authEmail($('#al').value);
@@ -417,14 +384,6 @@ async function loadMe(){
   const {data}=await sb.from('clients').select('data').eq('id',user.id).maybeSingle();
   me=data?data.data:null;
 }
-async function saveMe(){
-  const n=$('#mn').value.trim(),t=$('#mt').value.trim(),a=$('#ma').value.trim();
-  if(!n||!a||digits(t).length<10)return alert('Informe nome, WhatsApp com DDD e endereço.');
-  const m={...(me||{}),id:user.id,n,t,a,loc:cLoc||(me&&me.loc)||null,date:(me&&me.date)||new Date().toISOString()};
-  const {error}=await sb.from('clients').upsert({id:m.id,data:m});
-  if(error)return alert('Não foi possível salvar o cadastro: '+error.message);
-  me=m;cLoc=null;alert('Cadastro salvo!');go(items().length?'cart':'loja');
-}
 async function sair(){await sb.auth.signOut();user=null;me=null;S.mine=[];loc();go('loja')}
 async function finishC(){
   if(!user||!me){alert('Entre na sua conta e complete o cadastro para finalizar.');return go('eu')}
@@ -436,7 +395,6 @@ async function finishC(){
     troco:co.pay=='Dinheiro'&&cash?cash-t:0,obs:co.obs,done:false,st:'novo'};
   const {error}=await sb.from('orders').insert({id:o.id,data:o});
   if(error)return alert('Não foi possível enviar o pedido: '+error.message);
-  if(me&&(me.a!==o.addr||(o.loc&&!me.loc))){me={...me,a:o.addr,loc:o.loc||me.loc};sb.from('clients').upsert({id:me.id,data:me})}
   S.mine.unshift(o);S.cart={};co={cid:'',addr:'',loc:null,pay:'Dinheiro',cash:'',obs:''};save();
   alert('Pedido enviado! A loja vai entrar em contato.');go('meus');
 }
@@ -452,10 +410,10 @@ async function loadMeus(){
 
 /* ===== PAINEL DA LOJA x APP DO CLIENTE ===== */
 const APP=document.documentElement.dataset.app||'cliente';let isAdmin=false;
-const adm=()=>isAdmin?'<p class="mu"><a href="admin.html">Abrir painel da loja</a></p>':'';
+const adm=()=>'';
 const stOf=o=>o.st||(o.done?'ent':'novo');
 const stTag=o=>{const k=stOf(o);return `<span class="tag ${k=='conf'||k=='ent'?'ok':''}" ${k=='canc'?'style="background:var(--rd);color:#fff"':''}>${({novo:'Pedido recebido',conf:'Confirmado',ent:'Entregue',canc:'Cancelado'})[k]}</span>`};
-function navT(){return CUST?{loja:'Loja',cart:'Carrinho',eu:(user?'Minha conta':'Entrar'),meus:'Pedidos'}:{ped:'Pedidos',loja:'Balcão',cart:'Carrinho',prod:'Produtos',cli:'Clientes',cfg:'Ajustes'}}
+function navT(){return CUST?{loja:'Loja',cart:'Carrinho',meus:'Pedidos'}:{ped:'Pedidos',loja:'Balcão',cart:'Carrinho',prod:'Produtos',cli:'Clientes',cfg:'Ajustes'}}
 const ICO={
   loja:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
   bal:'<path d="M3.5 9 5 4h14l1.5 5"/><path d="M4.5 9v11h15V9"/><path d="M3.5 9a2.8 2.8 0 0 0 5.5 0 2.8 2.8 0 0 0 6 0 2.8 2.8 0 0 0 5.5 0"/>',
@@ -562,7 +520,7 @@ function alertBar(){
   b.innerHTML=`<span onclick="pf='novo';go('ped')" style="flex:1">🔔 ${n} pedido${n>1?'s':''} novo${n>1?'s':''} — toque para ver</span><button onclick="muteUntil=Date.now()+300000;alertBar()">${Date.now()<muteUntil?'🔕 silenciado':'🔕 5 min'}</button>`;
 }
 const _rn=renderNav;
-renderNav=function(){_rn();alertBar()};
+renderNav=function(){_rn();alertBar();renderAcc()};
 setInterval(()=>{
   if(CUST||!logged||Date.now()<muteUntil)return;
   if(S.orders.some(o=>stOf(o)=='novo')){beep();if(navigator.vibrate)navigator.vibrate([300,150,300])}
@@ -775,33 +733,98 @@ async function revGeo(lat,lng){
       uf=String(a['ISO3166-2-lvl4']||'').split('-')[1]||'',num=a.house_number||'';
     const cidade=cid?cid+(uf?'/'+uf:''):'';
     const addr=(rua?rua+(num?', '+num:'')+(bairro?' - '+bairro:''):bairro)+(cidade?(rua||bairro?', ':'')+cidade:'');
-    return {addr,ok:!!rua};
+    return {addr,ok:!!rua,rua,num,bai:bairro,cid:cidade};
   }finally{clearTimeout(tm)}
 }
 function gpsFill(cb){
   getLoc(async loc=>{
     const b=document.createElement('div');b.className='gps';b.textContent='🔎 Buscando o nome da rua e do bairro…';document.body.appendChild(b);
     let r={addr:'',ok:false};try{r=await revGeo(loc.lat,loc.lng)}catch(e){}
-    b.remove();cb({loc,addr:r.addr,ok:r.ok});
+    b.remove();cb({loc,...r});
   });
 }
 function gpsToast(r){toastMsg(r.ok?'📍 Endereço encontrado. Confira e complete o número da casa.':r.addr?'📍 Só encontrei o bairro e a cidade. Complete a rua e o número.':'📍 Localização capturada, mas não achei o nome da rua. Digite o endereço.')}
-function fillAddr(r){
-  const t=$('#aa')||$('#ma')||$('#ca'),p=$('#cl');
-  if(p)p.textContent='📍 '+r.loc.lat+', '+r.loc.lng+(r.loc.acc?' (±'+r.loc.acc+' m)':'');
-  if(r.addr&&t)t.value=r.addr;
-  gpsToast(r);
-}
-async function autoSaveMe(r){
-  if(!CUST||!user||!me||!sb||!r.ok)return;
-  const m={...me,a:r.addr,loc:r.loc};
-  const {error}=await sb.from('clients').upsert({id:m.id,data:m});
-  if(!error){me=m;toastMsg('✅ Endereço salvo no seu cadastro. Complete o número e toque em Salvar cadastro.')}
-}
 async function getSes(){
   if(!sb)return null;
   try{const {data}=await sb.auth.getSession();if(data.session)return data.session}catch(e){}
   try{const {data}=await sb.auth.refreshSession();return data.session||null}catch(e){return null}
+}
+
+/* ===== CONTA: endereço em campos separados (o GPS escreve neles) + ícone da conta no topo ===== */
+const composeAddr=f=>{let s=(f.rua||'')+(f.rua&&f.num?', '+f.num:'');if(f.bai)s+=(s?' - ':'')+f.bai;if(f.cid)s+=(s?', ':'')+f.cid;return s};
+const addrFields=m=>{
+  const lg=m.a&&!m.rua;
+  return `<label>Rua / Avenida</label><input id="f-rua" value="${esc(lg?m.a:m.rua)}" autocomplete="address-line1">
+  <div class="g2"><div><label>Número</label><input id="f-num" inputmode="numeric" value="${esc(m.num)}"></div><div><label>Bairro</label><input id="f-bai" value="${esc(m.bai)}"></div></div>
+  <label>Cidade / UF</label><input id="f-cid" value="${esc(lg?'':(m.cid||EMP.c))}">
+  <label>Observação / ponto de referência</label><textarea id="f-ref" rows="2" placeholder="Ex.: casa azul, portão de ferro, perto da farmácia">${esc(m.ref)}</textarea>`;
+};
+const readAddr=()=>{const g=i=>($('#'+i)?$('#'+i).value:'').trim(),f={rua:g('f-rua'),num:g('f-num'),bai:g('f-bai'),cid:g('f-cid'),ref:g('f-ref')};f.a=composeAddr(f);return f};
+function vEu(){
+  if(user)return vPerfil();
+  const up=am=='up';
+  return `<div class="card"><h2>${up?'Criar conta':'Entrar'}</h2>
+  <div class="g2"><button class="b ${up?'s':''}" onclick="am='in';render()">Entrar</button><button class="b ${up?'':'s'}" onclick="am='up';render()">Criar conta</button></div><br>
+  ${up?'<label>Nome</label><input id="an" autocomplete="name">':''}
+  <label>WhatsApp (com DDD) ou e-mail</label><input id="al" autocomplete="username" ${up?'oninput="wz(this)"':''} placeholder="(93) 99999-9999 ou nome@email.com">
+  ${up?'<div id="aw" hidden><label>Seu WhatsApp (com DDD)</label><input id="at" type="tel" autocomplete="tel"></div>':''}
+  <label>Senha${up?' (mínimo 6 caracteres)':''}</label><input id="ap" type="password" autocomplete="${up?'new-password':'current-password'}">
+  ${up?`<h2 style="margin-top:14px">Endereço de entrega</h2>${locBtn}<p id="cl" class="mu"></p>${addrFields({})}`:''}
+  <button class="b w" onclick="${up?'criarConta()':'entrar()'}">${up?'Criar conta':'Entrar'}</button></div>${instTip}`;
+}
+function vPerfil(){
+  const m=me||{},l=cLoc||m.loc;
+  return `<div class="card"><h2>Minha conta</h2>${me?'':'<p class="mu">Complete seu cadastro para fazer pedidos.</p>'}
+  <label>Nome</label><input id="mn" value="${esc(m.n)}" autocomplete="name">
+  <label>WhatsApp (com DDD)</label><input id="mt" type="tel" value="${esc(m.t)}" autocomplete="tel">
+  <h2 style="margin-top:14px">Endereço de entrega</h2>
+  ${locBtn}<p id="cl" class="mu">${l?'📍 '+l.lat+', '+l.lng+(l.acc?' (±'+l.acc+' m)':''):''}</p>
+  ${addrFields(m)}
+  <button class="b w" onclick="saveMe()">Salvar cadastro</button></div>
+  <button class="d" onclick="sair()">Sair da conta</button>${instTip}`;
+}
+async function criarConta(){
+  if(!sb)return alert('Sem conexão. Tente de novo com internet.');
+  const n=$('#an').value.trim(),l=$('#al').value.trim(),p=$('#ap').value,f=readAddr(),mail=l.includes('@'),em=authEmail(l),tel=mail?$('#at').value.trim():l;
+  if(!n||!f.rua)return alert('Preencha o nome e o endereço (rua).');
+  if(!em)return alert('Informe um WhatsApp com DDD ou um e-mail válido.');
+  if(digits(tel).length<10)return alert('Informe seu WhatsApp com DDD.');
+  if(p.length<6)return alert('A senha precisa ter pelo menos 6 caracteres.');
+  const {data,error}=await sb.auth.signUp({email:em,password:p});
+  if(error)return alert(/registered|exists/i.test(error.message)?'Esse contato já tem conta. Use a aba Entrar.':'Não foi possível criar a conta: '+error.message);
+  if(!data.session)return alert('Conta criada, mas a loja precisa desligar a confirmação de e-mail no Supabase.');
+  user=data.user;
+  me={id:user.id,n,t:tel,e:mail?l.toLowerCase():'',rua:f.rua,num:f.num,bai:f.bai,cid:f.cid,ref:f.ref,a:f.a,loc:cLoc||null,date:new Date().toISOString()};
+  const r=await sb.from('clients').upsert({id:me.id,data:me});
+  if(r.error){me=null;return alert('Conta criada, mas o cadastro não foi salvo: '+r.error.message)}
+  cLoc=null;alert('Conta criada!');go(items().length?'cart':'loja');
+}
+async function saveMe(){
+  const n=$('#mn').value.trim(),t=$('#mt').value.trim(),f=readAddr();
+  if(!n||!f.rua||digits(t).length<10)return alert('Informe nome, WhatsApp com DDD e o endereço (rua e número).');
+  const m={...(me||{}),id:user.id,n,t,rua:f.rua,num:f.num,bai:f.bai,cid:f.cid,ref:f.ref,a:f.a,loc:cLoc||(me&&me.loc)||null,date:(me&&me.date)||new Date().toISOString()};
+  const {error}=await sb.from('clients').upsert({id:m.id,data:m});
+  if(error)return alert('Não foi possível salvar o cadastro: '+error.message);
+  me=m;cLoc=null;alert('Cadastro salvo!');go(items().length?'cart':'loja');
+}
+function fillAddr(r){
+  const p=$('#cl');if(p)p.textContent='📍 '+r.loc.lat+', '+r.loc.lng+(r.loc.acc?' (±'+r.loc.acc+' m)':'');
+  const set=(id,v)=>{const e=$('#'+id);if(e&&v)e.value=v};
+  if($('#f-rua')){set('f-rua',r.rua);set('f-num',r.num);set('f-bai',r.bai);set('f-cid',r.cid)}
+  else{const t=$('#ca');if(t&&r.addr)t.value=r.addr}
+  gpsToast(r);
+}
+async function autoSaveMe(r){
+  if(!CUST||!user||!me||!sb||!$('#f-rua')||!(r.rua||r.bai))return;
+  const m={...me,...readAddr(),loc:r.loc};
+  const {error}=await sb.from('clients').upsert({id:m.id,data:m});
+  if(!error){me=m;toastMsg('✅ Endereço salvo no seu cadastro. Complete o número e confira.')}
+}
+function renderAcc(){
+  const b=$('#acc');if(!b)return;
+  b.hidden=!CUST;b.classList.toggle('on',tab=='eu');
+  const d=b.querySelector('i');if(d)d.hidden=!user;
+  b.title=user?'Minha conta':'Entrar';
 }
 
 applyEmp();
