@@ -2,7 +2,7 @@
 <html lang="pt-BR" data-app="cliente"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mercado Mezzomo</title>
-<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#2f6b3a"><link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0b3d91"><link rel="icon" href="favicon-64.png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 :root{--bg:#f4f1e8;--card:#fffdf7;--tx:#1f2a22;--mu:#6c7468;--ac:#2f6b3a;--ac2:#e3eddc;--bd:#d9d4c3;--rd:#b3402f;--yl:#f2c94c;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -91,7 +91,7 @@ body.t80 #pcup .cp{width:72mm;break-after:page;padding-bottom:6mm}
 body.a4 #pcup .cp{font-size:calc(14px*var(--ps,1));max-width:115mm;margin:0 auto 8mm;border:1.5px dashed #000;padding:8mm}
 }
 input[type=range]{padding:0;border:0;background:none}
-.top img{width:56px;height:56px;object-fit:contain;border-radius:12px;background:#fff}
+.top img{width:56px;height:56px;object-fit:contain;border-radius:12px;background:none}
 @media(max-width:420px){nav button .ic{width:46px}nav button{font-size:10.5px}}
 </style></head><body>
 <header class="top"><img id="hl" src="logo.png" alt="" onerror="this.style.display='none'"><div class="sp"><b>Mercado Mezzomo</b><small id="sub">Rua Jair Antonio Fortes, nº 626 · Novo Progresso/PA</small></div><button class="b s" id="ins" hidden style="padding:6px 10px;font-size:13px" onclick="ip.prompt()">Instalar app</button><button class="d" id="lo" hidden onclick="sb.auth.signOut().then(()=>location.reload())">Sair</button></header>
@@ -601,15 +601,31 @@ function applyEmp(){
   if(s)s.textContent=(APP=='loja'?'Painel da loja · ':'')+[EMP.e,EMP.c,tel()?fmtTel(tel()):''].filter(Boolean).join(' · ');
 }
 const bwCache={};
-function bwLogo(src,th){
+function bwLogo(src,th,lw){
   return new Promise(res=>{
-    const k=src.slice(-60)+'|'+th;if(bwCache[k])return res(bwCache[k]);
+    const k=src.slice(-60)+'|'+th+'|'+lw;if(bwCache[k])return res(bwCache[k]);
     const im=new Image();
     im.onload=()=>{
-      const w=500,h=Math.round(im.height/im.width*w),c=document.createElement('canvas');c.width=w;c.height=h;
+      const w=Math.max(120,Math.round(lw*8)),h=Math.round(im.height/im.width*w),c=document.createElement('canvas');c.width=w;c.height=h;
       const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.imageSmoothingQuality='high';x.drawImage(im,0,0,w,h);
-      const d=x.getImageData(0,0,w,h),p=d.data;
-      for(let i=0;i<p.length;i+=4){const v=(.299*p[i]+.587*p[i+1]+.114*p[i+2])<th?0:255;p[i]=p[i+1]=p[i+2]=v;p[i+3]=255}
+      const d=x.getImageData(0,0,w,h),p=d.data,n=w*h,bg=new Uint8Array(n),st=[];
+      const add=i=>{if(!bg[i]){bg[i]=1;st.push(i)}};
+      for(let i=0;i<w;i++){add(i);add((h-1)*w+i)}for(let j=0;j<h;j++){add(j*w);add(j*w+w-1)}
+      while(st.length){
+        const i=st.pop(),xx=i%w,yy=(i-xx)/w;
+        for(const j of [xx>0?i-1:-1,xx<w-1?i+1:-1,yy>0?i-w:-1,yy<h-1?i+w:-1]){
+          if(j<0||bg[j])continue;
+          if(Math.abs(p[i*4]-p[j*4])+Math.abs(p[i*4+1]-p[j*4+1])+Math.abs(p[i*4+2]-p[j*4+2])<24)add(j);
+        }
+      }
+      const g=new Float32Array(n),off=th-165;
+      for(let i=0;i<n;i++)g[i]=bg[i]?255:Math.max(0,Math.min(255,.299*p[i*4]+.587*p[i*4+1]+.114*p[i*4+2]-off));
+      for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++){
+        const i=y*w+xx,o=g[i],v=o<128?0:255,e=o-v;g[i]=v;
+        if(xx+1<w)g[i+1]+=e*7/16;
+        if(y+1<h){if(xx>0)g[i+w-1]+=e*3/16;g[i+w]+=e*5/16;if(xx+1<w)g[i+w+1]+=e/16}
+      }
+      for(let i=0;i<n;i++){const v=g[i]<128?0:255;p[i*4]=p[i*4+1]=p[i*4+2]=v;p[i*4+3]=255}
       x.putImageData(d,0,0);bwCache[k]=c.toDataURL('image/png');res(bwCache[k]);
     };
     im.onerror=()=>res(LOGO_C);im.src=src;
@@ -632,7 +648,7 @@ const sampleOrder=()=>({id:'00000A3F9',date:new Date().toISOString(),cn:'Maria d
 async function doPrint(L){
   let st=$('#pgs');if(!st){st=document.createElement('style');st.id='pgs';document.head.appendChild(st)}
   st.textContent=fmt=='t80'?'@page{size:80mm auto;margin:2mm}':'@page{size:A4;margin:12mm}';
-  const logo=await bwLogo(EMP.logo||'logo.png',EMP.th);
+  const logo=await bwLogo(EMP.logo||'logo.png',EMP.th,EMP.lw);
   const box=document.createElement('div');box.id='pcup';box.className='cpw';
   box.style.setProperty('--ps',psc[fmt]);box.style.setProperty('--lw',EMP.lw+'mm');
   box.innerHTML=L.map(o=>cupom(o,logo)).join('');document.body.appendChild(box);
@@ -653,7 +669,7 @@ function bump(d){
 }
 async function refPrev(){
   const el=$('#pv2');if(!el)return;
-  const logo=await bwLogo(EMP.logo||'logo.png',EMP.th);
+  const logo=await bwLogo(EMP.logo||'logo.png',EMP.th,EMP.lw);
   el.className='cpw pvw '+fmt;el.style.setProperty('--ps',psc[fmt]);el.style.setProperty('--lw',EMP.lw+'mm');
   el.innerHTML=cupom(sampleOrder(),logo);
 }
@@ -673,7 +689,7 @@ vCfg=function(){
   <label>Papel</label><select onchange="setFmt(this.value)"><option value="a4" ${fmt=='a4'?'selected':''}>A4</option><option value="t80" ${fmt=='t80'?'selected':''}>Bobina 80 mm (Bematech)</option></select>
   <label>Tamanho das letras (neste aparelho)</label><div class="q" style="justify-content:flex-start;margin-bottom:8px"><button onclick="bump(-5)" aria-label="Diminuir letras">A−</button><b class="psv">${Math.round(psc[fmt]*100)}%</b><button onclick="bump(5)" aria-label="Aumentar letras">A+</button></div>
   <label>Tamanho do logotipo: <b id="lwv">${E.lw}</b> mm</label><input type="range" min="20" max="70" value="${E.lw}" oninput="EMP.lw=+this.value;$('#lwv').textContent=this.value;refPrev()">
-  <label>Contraste do logotipo (preto e branco)</label><input type="range" min="100" max="230" value="${E.th}" oninput="EMP.th=+this.value;refPrev()">
+  <label>Escuridão do logotipo (preto e branco com pontilhado)</label><input type="range" min="100" max="230" value="${E.th}" oninput="EMP.th=+this.value;refPrev()">
   <p class="mu">Prévia do cupom (tamanho real):</p><div id="pv2" class="cpw pvw"></div><br>
   <div class="g2"><button class="b" onclick="saveEmp()">Salvar ajustes</button><button class="b s" onclick="doPrint([sampleOrder()])">🖨️ Imprimir teste</button></div></div>`;
 };
