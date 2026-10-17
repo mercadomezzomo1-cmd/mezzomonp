@@ -107,7 +107,7 @@ const SEED=[{id:'a1',n:'Arroz 5kg',p:28.9,u:'un'},{id:'a2',n:'Feijão carioca 1k
 /* ===== SUPABASE: cole aqui os dados do seu projeto (Project Settings > API) ===== */
 const SB_URL='https://jfhyyizuziyxumtiebdn.supabase.co', SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmaHl5aXp1eml5eHVtdGllYmRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxMDY0NDAsImV4cCI6MjEwNzY4MjQ0MH0.-PCi3sXeLUeMh5RAPpLcNDLcbgCVRcntZB2IwHeDSvM';
 const ZAP=''; /* WhatsApp da loja: só números com DDD. Ex.: '93999999999' */
-const sb=(window.supabase&&SB_URL.startsWith('http'))?window.supabase.createClient(SB_URL,SB_KEY):null;
+const sb=(window.supabase&&SB_URL.startsWith('http'))?window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}}):null;
 const TB=['products','clients','orders'];let snap={},logged=false,busy=0,chain=Promise.resolve();
 const loc=()=>{try{localStorage.setItem('mk',JSON.stringify(S))}catch(e){}};
 const save=()=>{loc();if(sb&&logged){busy++;chain=chain.then(push).catch(fail).finally(()=>busy--)}};
@@ -211,7 +211,7 @@ function vCart(){
   <label>Cliente</label><select onchange="pick(this.value)"><option value="">Selecione...</option>${S.clients.map(c=>`<option value="${c.id}" ${co.cid==c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select>
   ${S.clients.length?'':'<p class="mu">Nenhum cliente. <a href="#" onclick="go(\'cli\');return false">Cadastrar cliente</a></p>'}
   <label>Endereço de entrega</label><textarea rows="2" oninput="co.addr=this.value">${esc(co.addr)}</textarea>
-  <button class="b s w" onclick="getLoc(l=>{co.loc=l;render()})">📍 ${co.loc?'Atualizar localização':'Usar minha localização'}</button>
+  <button class="b s w" onclick="gpsFill(r=>{co.loc=r.loc;if(r.addr)co.addr=r.addr;render();gpsToast(r)})">📍 ${co.loc?'Atualizar localização':'Usar minha localização'}</button>
   ${co.loc?`<p class="mu">Local: <a target="_blank" rel="noopener" href="${mapUrl(co.loc)}">${co.loc.lat}, ${co.loc.lng}</a>${co.loc.acc?' (±'+co.loc.acc+' m)':''}</p>`:''}
   <label style="display:block;margin-top:10px">Forma de pagamento</label>
   <select onchange="co.pay=this.value;render()">${['Dinheiro','Pix','Cartão'].map(x=>`<option ${co.pay==x?'selected':''}>${x}</option>`).join('')}</select>
@@ -267,7 +267,7 @@ function vCli(){
   <label>Nome</label><input id="cn" value="${esc(c.n)}">
   <label>Telefone / WhatsApp</label><input id="ct" type="tel" value="${esc(c.t)}" placeholder="(93) 99999-9999">
   <label>Endereço (rua, número, bairro, referência)</label><textarea id="ca" rows="2">${esc(c.a)}</textarea>
-  <button class="b s w" onclick="getLoc(l=>{cLoc=l;$('#cl').textContent='📍 '+l.lat+', '+l.lng+(l.acc?' (±'+l.acc+' m)':'')})">📍 Capturar localização atual</button>
+  <button class="b s w" onclick="gpsFill(r=>{cLoc=r.loc;fillAddr(r);autoSaveMe(r)})">📍 Capturar localização atual</button>
   <p id="cl" class="mu">${(cLoc||c.loc)?'📍 '+(cLoc||c.loc).lat+', '+(cLoc||c.loc).lng:''}</p>
   <button class="b w" onclick="saveC()">Salvar cliente</button></div>
   ${S.clients.map(x=>`<div class="card row"><div><b>${esc(x.n)}</b><div class="mu">${esc(x.t)}<br>${esc(x.a)}</div></div>
@@ -366,7 +366,7 @@ function authEmail(v){
 let user=null,am='in';
 const wz=i=>{$('#aw').hidden=!i.value.includes('@')};
 const instTip='<p class="mu">Para instalar o app: no Android toque em "Instalar app" no topo; no iPhone toque em Compartilhar e depois em Adicionar à Tela de Início.</p>';
-const locBtn=`<button class="b s w" onclick="getLoc(x=>{cLoc=x;$('#cl').textContent='📍 '+x.lat+', '+x.lng+(x.acc?' (±'+x.acc+' m)':'')})">📍 Usar minha localização</button>`;
+const locBtn=`<button class="b s w" onclick="gpsFill(r=>{cLoc=r.loc;fillAddr(r);autoSaveMe(r)})">📍 Usar minha localização</button>`;
 function vEu(){
   if(user)return vPerfil();
   const up=am=='up';
@@ -436,6 +436,7 @@ async function finishC(){
     troco:co.pay=='Dinheiro'&&cash?cash-t:0,obs:co.obs,done:false,st:'novo'};
   const {error}=await sb.from('orders').insert({id:o.id,data:o});
   if(error)return alert('Não foi possível enviar o pedido: '+error.message);
+  if(me&&(me.a!==o.addr||(o.loc&&!me.loc))){me={...me,a:o.addr,loc:o.loc||me.loc};sb.from('clients').upsert({id:me.id,data:me})}
   S.mine.unshift(o);S.cart={};co={cid:'',addr:'',loc:null,pay:'Dinheiro',cash:'',obs:''};save();
   alert('Pedido enviado! A loja vai entrar em contato.');go('meus');
 }
@@ -522,11 +523,12 @@ async function pollOrders(){
 async function init(){
   if(!CFG){if(!S.products.length)S.products=SEED;if(APP=='loja')tab='ped';return render()}
   let ses=null;
-  if(sb){try{ses=(await sb.auth.getSession()).data.session}catch(e){}}
+  if(sb){ses=await getSes();if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{})}
   if(APP=='loja'){
     if(!sb){$('#v').innerHTML='<div class="card"><p class="mu">Sem conexão. Abra o painel com internet.</p></div>';return}
     if(ses){
-      const {data:ok}=await sb.rpc('sou_admin');
+      const {data:ok,error:ae}=await sb.rpc('sou_admin');
+      if(ae){$('#v').innerHTML='<div class="card"><p class="mu">Não foi possível conferir sua conta. Verifique a internet e tente de novo.</p><button class="b" onclick="location.reload()">Tentar de novo</button></div>';return}
       if(ok){user=ses.user;logged=true;$('#lo').hidden=false;tab='ped';await pull();await loadCfg();applyEmp();knownO=new Set(S.orders.map(o=>o.id));setInterval(pollOrders,10000);wake();return render()}
       await sb.auth.signOut();alert('Entrou, mas essa conta não é administradora da loja. Veja as instruções para adicionar o e-mail na tabela admins.');
     }
@@ -757,6 +759,49 @@ function impCSV(inp){
     });
     save();render();alert(n+' produtos importados ou atualizados.'+(sw?' '+sw+' linhas tinham preço e código trocados e foram corrigidas.':''));
   });
+}
+
+/* ===== ENDEREÇO REAL PELO GPS + LOGIN QUE FICA SALVO ===== */
+function toastMsg(t){const b=document.createElement('div');b.className='gps';b.textContent=t;document.body.appendChild(b);setTimeout(()=>b.remove(),5000)}
+async function revGeo(lat,lng){
+  const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),9000);
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&accept-language=pt-BR&lat=${lat}&lon=${lng}`,{signal:ac.signal});
+    if(!r.ok)throw 0;
+    const a=(await r.json()).address||{};
+    const rua=a.road||a.pedestrian||a.residential||a.footway||a.path||'',
+      bairro=a.suburb||a.neighbourhood||a.quarter||a.city_district||a.hamlet||'',
+      cid=a.city||a.town||a.village||a.municipality||'',
+      uf=String(a['ISO3166-2-lvl4']||'').split('-')[1]||'',num=a.house_number||'';
+    const cidade=cid?cid+(uf?'/'+uf:''):'';
+    const addr=(rua?rua+(num?', '+num:'')+(bairro?' - '+bairro:''):bairro)+(cidade?(rua||bairro?', ':'')+cidade:'');
+    return {addr,ok:!!rua};
+  }finally{clearTimeout(tm)}
+}
+function gpsFill(cb){
+  getLoc(async loc=>{
+    const b=document.createElement('div');b.className='gps';b.textContent='🔎 Buscando o nome da rua e do bairro…';document.body.appendChild(b);
+    let r={addr:'',ok:false};try{r=await revGeo(loc.lat,loc.lng)}catch(e){}
+    b.remove();cb({loc,addr:r.addr,ok:r.ok});
+  });
+}
+function gpsToast(r){toastMsg(r.ok?'📍 Endereço encontrado. Confira e complete o número da casa.':r.addr?'📍 Só encontrei o bairro e a cidade. Complete a rua e o número.':'📍 Localização capturada, mas não achei o nome da rua. Digite o endereço.')}
+function fillAddr(r){
+  const t=$('#aa')||$('#ma')||$('#ca'),p=$('#cl');
+  if(p)p.textContent='📍 '+r.loc.lat+', '+r.loc.lng+(r.loc.acc?' (±'+r.loc.acc+' m)':'');
+  if(r.addr&&t)t.value=r.addr;
+  gpsToast(r);
+}
+async function autoSaveMe(r){
+  if(!CUST||!user||!me||!sb||!r.ok)return;
+  const m={...me,a:r.addr,loc:r.loc};
+  const {error}=await sb.from('clients').upsert({id:m.id,data:m});
+  if(!error){me=m;toastMsg('✅ Endereço salvo no seu cadastro. Complete o número e toque em Salvar cadastro.')}
+}
+async function getSes(){
+  if(!sb)return null;
+  try{const {data}=await sb.auth.getSession();if(data.session)return data.session}catch(e){}
+  try{const {data}=await sb.auth.refreshSession();return data.session||null}catch(e){return null}
 }
 
 applyEmp();
