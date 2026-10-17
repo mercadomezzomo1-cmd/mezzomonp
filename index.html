@@ -2,7 +2,7 @@
 <html lang="pt-BR" data-app="cliente"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mercado Mezzomo</title>
-<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0b3d91"><link rel="icon" href="favicon-64.png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Mercado"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="theme-color" content="#0b3d91"><link rel="icon" href="favicon-64.png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 :root{--bg:#f4f1e8;--card:#fffdf7;--tx:#1f2a22;--mu:#6c7468;--ac:#2f6b3a;--ac2:#e3eddc;--bd:#d9d4c3;--rd:#b3402f;--yl:#f2c94c;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -97,6 +97,12 @@ input[type=range]{padding:0;border:0;background:none}
 .acc[hidden]{display:none}.acc svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .acc.on{background:var(--ac);color:#fff}.acc.on svg{stroke:#fff}
 .acc i{position:absolute;top:-1px;right:-1px;width:12px;height:12px;border-radius:50%;background:#25a244;border:2px solid var(--bg)}.acc i[hidden]{display:none}
+#gate{position:fixed;inset:0;z-index:200;background:linear-gradient(160deg,#0b3d91,#1f9fe6);display:flex;align-items:center;justify-content:center;padding:calc(18px + env(safe-area-inset-top,0px)) 18px calc(18px + env(safe-area-inset-bottom,0px));overflow:auto}
+.gbox{background:var(--card);color:var(--tx);border-radius:18px;padding:22px 18px;max-width:420px;width:100%;text-align:center;box-shadow:0 10px 40px #0006}
+.gbox img{width:84px;height:84px;object-fit:contain;border-radius:18px}.gbox h2{margin:10px 0 6px}
+.gs{text-align:left;padding-left:22px;line-height:1.6}.gs li{margin-bottom:8px}
+.garrow{font-size:34px;line-height:1;animation:gb .9s infinite alternate}
+@keyframes gb{to{transform:translateY(8px)}}
 </style></head><body>
 <header class="top"><img id="hl" src="logo.png" alt="" onerror="this.style.display='none'"><div class="sp"><b>Mercado Mezzomo</b><small id="sub">Rua Jair Antonio Fortes, nº 626 · Novo Progresso/PA</small></div><button class="b s" id="ins" hidden style="padding:6px 10px;font-size:13px" onclick="ip.prompt()">Instalar app</button><button class="d" id="lo" hidden onclick="sb.auth.signOut().then(()=>location.reload())">Sair</button><button class="acc" id="acc" hidden onclick="go('eu')" aria-label="Minha conta"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg><i hidden></i></button></header>
 <main id="v"></main>
@@ -110,6 +116,7 @@ try{S=Object.assign(S,JSON.parse(localStorage.getItem('mk')||'{}'))}catch(e){}
 const SEED=[{id:'a1',n:'Arroz 5kg',p:28.9,u:'un'},{id:'a2',n:'Feijão carioca 1kg',p:8.5,u:'un'},{id:'a3',n:'Banana prata',p:6.9,u:'kg'},{id:'a4',n:'Leite integral 1L',p:5.2,u:'un'}];
 /* ===== SUPABASE: cole aqui os dados do seu projeto (Project Settings > API) ===== */
 const SB_URL='https://jfhyyizuziyxumtiebdn.supabase.co', SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmaHl5aXp1eml5eHVtdGllYmRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxMDY0NDAsImV4cCI6MjEwNzY4MjQ0MH0.-PCi3sXeLUeMh5RAPpLcNDLcbgCVRcntZB2IwHeDSvM';
+const INSTALL_OBRIGATORIO=true; /* true = o cliente precisa instalar o app (celular); false = só sugere e deixa continuar */
 const ZAP=''; /* WhatsApp da loja: só números com DDD. Ex.: '93999999999' */
 const sb=(window.supabase&&SB_URL.startsWith('http'))?window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}}):null;
 const TB=['products','clients','orders'];let snap={},logged=false,busy=0,chain=Promise.resolve();
@@ -307,7 +314,7 @@ function tg(id){const o=S.orders.find(x=>x.id==id);o.done=!o.done;save();render(
 const CFG=SB_URL.startsWith('http');let CUST=false,ip=null,me=null;
 try{me=JSON.parse(localStorage.getItem('mkme')||'null')}catch(e){}
 S.mine=S.mine||[];
-addEventListener('beforeinstallprompt',e=>{e.preventDefault();ip=e;$('#ins').hidden=false});
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();ip=e;try{localStorage.removeItem('mkInst')}catch(x){}$('#ins').hidden=false});
 const rid=()=>crypto.randomUUID?crypto.randomUUID():uid()+uid()+uid()+uid()+uid()+uid();
 async function loadProducts(){
   if(!sb)return;
@@ -494,6 +501,7 @@ async function init(){
   }
   if(ses){user=ses.user;const {data:ok}=await sb.rpc('sou_admin');isAdmin=!!ok}
   CUST=true;tab='loja';me=null;
+  if(needInstall())showGate();
   await loadCfg();applyEmp();if(tel()){$('#wa').href='https://wa.me/'+waNum(tel());$('#wa').hidden=false}
   render();await loadProducts();if(user)await loadMe();render();
 }
@@ -825,6 +833,50 @@ function renderAcc(){
   b.hidden=!CUST;b.classList.toggle('on',tab=='eu');
   const d=b.querySelector('i');if(d)d.hidden=!user;
   b.title=user?'Minha conta':'Entrar';
+}
+
+/* ===== INSTALAÇÃO OBRIGATÓRIA DO APP (Android e iPhone) ===== */
+const UA=navigator.userAgent,isIOS=/iPhone|iPad|iPod/.test(UA)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1),isAndroid=/Android/i.test(UA),
+  inApp=/FBAN|FBAV|Instagram|WhatsApp|Line\/|Snapchat|TikTok|MicroMessenger|; wv\)/i.test(UA);
+const isStandalone=()=>matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches||navigator.standalone===true;
+let gateManual=false;
+const SHARE_SVG='<svg viewBox="0 0 24 24" width="20" height="20" style="vertical-align:-4px" fill="none" stroke="#0a84ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>';
+function needInstall(){
+  if(APP!='cliente'||!(isIOS||isAndroid)||isStandalone())return false;
+  if(!INSTALL_OBRIGATORIO&&sessionStorage.getItem('noinst'))return false;
+  return true;
+}
+function gateHtml(){
+  const inst=localStorage.getItem('mkInst'),br=isIOS?'Safari':'Chrome';
+  let body;
+  if(inApp)body=`<p>Você abriu o link dentro de outro aplicativo, e ali não dá para instalar. Abra no <b>${br}</b>.</p><button class="b w" onclick="copyLink()">📋 Copiar o link</button><p class="mu">Cole o link no ${br} e siga os passos.</p>`;
+  else if(inst&&!isIOS)body='<p><b>✅ App instalado!</b><br>Abra o app pelo ícone <b>Mercado</b> na tela inicial do celular.</p>';
+  else if(isIOS)body=`<ol class="gs"><li>Toque em <b>Compartilhar</b> ${SHARE_SVG}<br><span class="mu">(no iPhone fica na barra de baixo; no iPad, no topo)</span></li><li>Role e toque em <b>Adicionar à Tela de Início</b> ➕</li><li>Toque em <b>Adicionar</b> e abra o app pelo ícone</li></ol><div class="garrow">⬇</div>`;
+  else if(ip)body='<button class="b w" style="font-size:18px;padding:16px" onclick="doInstall()">📲 Instalar o app agora</button>';
+  else if(!gateManual)body='<p class="mu">Preparando a instalação…</p>';
+  else body='<ol class="gs"><li>Toque no menu <b>⋮</b> do navegador</li><li>Toque em <b>Instalar app</b> (ou <b>Adicionar à tela inicial</b>)</li><li>Confirme e abra o app pelo ícone</li></ol>';
+  const soft=!INSTALL_OBRIGATORIO||(inst&&!isIOS);
+  return `<div class="gbox"><img src="${EMP.logo||'logo.png'}" alt=""><h2>Instale o app ${esc(EMP.n)}</h2><p>Peça mais rápido, acompanhe seus pedidos e fique sempre logado. Leva 10 segundos e não ocupa espaço.</p>${body}${soft?'<button class="d" style="margin-top:8px" onclick="closeGate()">Continuar no navegador</button>':''}</div>`;
+}
+function drawGate(){const g=$('#gate');if(g)g.innerHTML=gateHtml()}
+function showGate(){
+  if($('#gate'))return;
+  const g=document.createElement('div');g.id='gate';document.body.appendChild(g);document.body.style.overflow='hidden';drawGate();
+  if(isAndroid&&!inApp)setTimeout(()=>{if(!ip){gateManual=true;drawGate()}},3000);
+  addEventListener('beforeinstallprompt',()=>setTimeout(drawGate,0));
+  addEventListener('appinstalled',()=>{try{localStorage.setItem('mkInst','1')}catch(e){}drawGate()});
+}
+function closeGate(){try{sessionStorage.setItem('noinst','1')}catch(e){}const g=$('#gate');if(g)g.remove();document.body.style.overflow=''}
+async function doInstall(){
+  if(!ip)return;
+  ip.prompt();
+  const c=await ip.userChoice;ip=null;
+  if(c.outcome=='accepted'){try{localStorage.setItem('mkInst','1')}catch(e){}}else gateManual=true;
+  drawGate();
+}
+function copyLink(){
+  const u=location.href.split('#')[0];
+  (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>toastMsg('Link copiado! Cole no '+(isIOS?'Safari':'Chrome')+'.'),()=>prompt('Copie o link:',u));
 }
 
 applyEmp();
