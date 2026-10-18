@@ -130,8 +130,16 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--ac);box-
 .pcard.off{opacity:.62}.pcard.off .pimg img{filter:grayscale(1)}
 .sold{position:absolute;left:6px;top:6px;background:#5b6475;color:#fff;font:700 11px system-ui,sans-serif;padding:3px 8px;border-radius:8px;letter-spacing:.3px}
 .low{font-size:12px;font-weight:700;color:#b45309}
+[hidden]{display:none!important}
+button.b.rd,a.b.rd{background:linear-gradient(180deg,#e85a46,#c0392b);color:#fff;box-shadow:0 2px 8px #c0392b66,inset 0 1px 0 #ffffff40}
+#lo{min-height:36px;padding:0 16px;font-size:13px}
+.card.row.pr{flex-direction:column;align-items:stretch;gap:12px}
+.acts,.acts2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.acts2{margin-top:12px}
+.acts>*,.acts2>*{min-height:42px;width:100%;justify-content:center;margin:0}
+.acts2>:last-child:nth-child(odd){grid-column:1/-1}
 </style></head><body>
-<header class="top"><img id="hl" src="logo.png" alt="" onerror="this.style.display='none'"><div class="sp"><b>Mercado Mezzomo</b><small id="sub">Rua Jair Antonio Fortes, nº 626 · Novo Progresso/PA</small></div><button class="b s" id="ins" hidden style="padding:6px 10px;font-size:13px" onclick="ip.prompt()">Instalar app</button><button class="d" id="lo" hidden onclick="sb.auth.signOut().then(()=>location.reload())">Sair</button><button class="acc" id="acc" hidden onclick="go('eu')" aria-label="Minha conta"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg><i hidden></i></button></header>
+<header class="top"><img id="hl" src="logo.png" alt="" onerror="this.style.display='none'"><div class="sp"><b>Mercado Mezzomo</b><small id="sub">Rua Jair Antonio Fortes, nº 626 · Novo Progresso/PA</small></div><button class="b s" id="ins" hidden style="padding:6px 10px;font-size:13px" onclick="ip.prompt()">Instalar app</button><button class="b rd" id="lo" hidden onclick="sb.auth.signOut().then(()=>location.reload())">Sair</button><button class="acc" id="acc" hidden onclick="go('eu')" aria-label="Minha conta"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg><i hidden></i></button></header>
 <main id="v"></main>
 <nav id="nav"></nav>
 <a id="wa" class="wa" hidden target="_blank" rel="noopener" aria-label="Falar no WhatsApp">💬</a>
@@ -310,8 +318,8 @@ function vCli(){
   <button class="b s w" onclick="gpsFill(r=>{cLoc=r.loc;fillAddr(r);autoSaveMe(r)})">📍 Capturar localização atual</button>
   <p id="cl" class="mu">${(cLoc||c.loc)?'📍 '+(cLoc||c.loc).lat+', '+(cLoc||c.loc).lng:''}</p>
   <button class="b w" onclick="saveC()">Salvar cliente</button></div>
-  ${S.clients.map(x=>`<div class="card row"><div><b>${esc(x.n)}</b><div class="mu">${esc(x.t)}<br>${esc(x.a)}${x.ref?'<br>Obs: '+esc(x.ref):''}</div></div>
-  <div><button class="b s" onclick="editC='${x.id}';cLoc=null;render()">Editar</button><button class="d" onclick="S.clients=S.clients.filter(y=>y.id!='${x.id}');save();render()">Excluir</button></div></div>`).join('')}`;
+  ${S.clients.map(x=>`<div class="card row pr"><div><b>${esc(x.n)}</b><div class="mu">${esc(x.t)}<br>${esc(x.a)}${x.ref?'<br>Obs: '+esc(x.ref):''}</div></div>
+  <div class="acts"><button class="b s" onclick="editC='${x.id}';cLoc=null;render()">✏️ Editar</button><button class="b rd" onclick="S.clients=S.clients.filter(y=>y.id!='${x.id}');save();render()">🗑 Excluir</button></div></div>`).join('')}`;
 }
 function saveC(){
   const n=$('#cn').value.trim(),a=$('#ca').value.trim();
@@ -333,10 +341,10 @@ function vPed(){
     <div class="row" style="margin-top:8px"><span class="mu">${o.pay}${o.troco?` · levar troco ${R(o.troco)} (de ${R(o.cash)})`:''}</span><span class="tot">${R(o.total)}</span></div>
     ${o.obs?`<div class="mu">Obs: ${esc(o.obs)}</div>`:''}
     <div class="row" style="margin-top:10px;justify-content:flex-start;flex-wrap:wrap">
-    <button class="b s" onclick="printO('${o.id}')">🖨️ Imprimir</button>
+    <button class="b s" onclick="printO('${o.id}')">🖨️ Imprimir</button><button class="b s" onclick="repetir('${o.id}')">🔁 Repetir</button>
     <button class="b s" onclick="tg('${o.id}')">${o.done?'Reabrir':'Marcar entregue'}</button>
-    ${ph?`<a class="b s" style="text-decoration:none;border-radius:8px;padding:11px 16px;font-weight:700" target="_blank" rel="noopener" href="https://wa.me/55${ph}?text=${encodeURIComponent(msg)}">WhatsApp</a>`:''}
-    <button class="d" onclick="S.orders=S.orders.filter(x=>x.id!='${o.id}');save();render()">Excluir</button></div></div>`}).join('');
+    ${ph?`<a class="b s" target="_blank" rel="noopener" href="https://wa.me/55${ph}?text=${encodeURIComponent(msg)}">WhatsApp</a>`:''}
+    <button class="b rd" onclick="S.orders=S.orders.filter(x=>x.id!='${o.id}');save();render()">🗑 Excluir</button></div></div>`}).join('');
 }
 function tg(id){const o=S.orders.find(x=>x.id==id);o.done=!o.done;save();render();}
 /* ===== MODO CLIENTE (app instalável): cadastro + pedidos ===== */
@@ -365,7 +373,7 @@ function mineHtml(l){
   if(!l.length)return '<div class="card"><p class="mu">Você ainda não fez pedidos.</p></div>';
   return l.map(o=>`<div class="card"><div class="row"><b>${R(o.total)}</b>${stTag(o)}</div>
   <div class="mu">${new Date(o.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})} · ${esc(o.pay)}${o.troco?' · troco para '+R(o.cash):''}</div>
-  <p>${o.items.map(i=>`${i.q}× ${esc(i.n)}`).join('<br>')}</p></div>`).join('');
+  <p>${o.items.map(i=>`${i.q}× ${esc(i.n)}`).join('<br>')}</p><button class="b w" onclick="repetir('${o.id}')">🔁 Repetir este pedido</button></div>`).join('');
 }
 function vMeus(){setTimeout(loadMeus,0);return '<h2>Meus pedidos</h2><div id="mp">'+mineHtml(S.mine)+'</div>';}
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
@@ -497,10 +505,10 @@ vPed=function(){
     <div class="mu">${esc(o.addr)}${o.loc?` · <a target="_blank" rel="noopener" href="${mapUrl(o.loc)}">ver no mapa</a>${o.loc.acc?' (±'+o.loc.acc+' m)':''}`:''}</div>
     <div class="row" style="margin-top:8px"><span class="mu">${o.pay}${o.troco?` · levar troco ${R(o.troco)} (de ${R(o.cash)})`:''}</span><span class="tot">${R(o.total)}</span></div>
     ${o.obs?`<div class="mu">Obs: ${esc(o.obs)}</div>`:''}
-    <div class="row" style="margin-top:10px;justify-content:flex-start;flex-wrap:wrap">${acts}
-    <button class="b s" onclick="printO('${o.id}')">🖨️ Imprimir</button>
-    ${ph?`<a class="b s" style="text-decoration:none;border-radius:8px;padding:11px 16px;font-weight:700" target="_blank" rel="noopener" href="https://wa.me/${ph.length<=11?'55':''}${ph}?text=${encodeURIComponent(msg)}">WhatsApp</a>`:''}
-    <button class="d" onclick="S.orders=S.orders.filter(x=>x.id!='${o.id}');save();render()">Excluir</button></div></div>`}).join('');
+    <div class="acts2">${acts}
+    <button class="b s" onclick="printO('${o.id}')">🖨️ Imprimir</button><button class="b s" onclick="repetir('${o.id}')">🔁 Repetir</button>
+    ${ph?`<a class="b s" target="_blank" rel="noopener" href="https://wa.me/${ph.length<=11?'55':''}${ph}?text=${encodeURIComponent(msg)}">WhatsApp</a>`:''}
+    <button class="b rd" onclick="S.orders=S.orders.filter(x=>x.id!='${o.id}');save();render()">🗑 Excluir</button></div></div>`}).join('');
 };
 function setSt(id,st){const o=S.orders.find(x=>x.id==id);if(!o)return;const prev=stOf(o);o.st=st;o.done=st=='ent';if(st=='canc'&&prev!='canc'&&prev!='ent'&&!o.rest){stkAdj(o,1);o.rest=true}else if(prev=='canc'&&st!='canc'&&o.rest){stkAdj(o,-1);o.rest=false}save();const y=scrollY;render();scrollTo(0,y);if(st=='conf'&&prev=='novo'&&autoPr)doPrint([o])}
 printO=function(id){
@@ -725,8 +733,8 @@ let pq='',plim=40;
 function prodRows(){
   const t=pq.toLowerCase().trim(),l=S.products.filter(p=>t=='@esg'?soldOut(p):(!t||(p.n+' '+(p.cod||'')+' '+(p.c||'')+' '+(p.bar||'')).toLowerCase().includes(t))).sort((a,b)=>a.n.localeCompare(b.n,'pt-BR'));
   if(!l.length)return '<p class="mu">Nenhum produto encontrado.</p>';
-  return l.slice(0,plim).map(x=>`<div class="card row"><div class="it">${th(x)}<b>${esc(x.n)}</b><div class="mu">${R(x.p)} / ${esc(x.u)}${x.c?' · '+esc(x.c):''}${x.cod?' · cód. '+esc(x.cod):''}${stockOf(x)!==null?' · estoque '+stockOf(x):''}${x.bar?' · EAN '+esc(x.bar):''}${soldOut(x)?' <span class="tag" style="background:var(--rd);color:#fff">ESGOTADO</span>':''}</div></div>
-  <div><button class="b s" onclick="editP='${x.id}';pImg=undefined;render()">Editar</button><button class="d" onclick="delP('${x.id}')">Excluir</button></div></div>`).join('')+(l.length>plim?`<button class="b s w" onclick="plim+=40;$('#pl2').innerHTML=prodRows()">Mostrar mais (${l.length-plim})</button>`:'');
+  return l.slice(0,plim).map(x=>`<div class="card row pr"><div class="it">${th(x)}<b>${esc(x.n)}</b><div class="mu">${R(x.p)} / ${esc(x.u)}${x.c?' · '+esc(x.c):''}${x.cod?' · cód. '+esc(x.cod):''}${stockOf(x)!==null?' · estoque '+stockOf(x):''}${x.bar?' · EAN '+esc(x.bar):''}${soldOut(x)?' <span class="tag" style="background:var(--rd);color:#fff">ESGOTADO</span>':''}</div></div>
+  <div class="acts"><button class="b s" onclick="editP='${x.id}';pImg=undefined;render()">✏️ Editar</button><button class="b rd" onclick="delP('${x.id}')">🗑 Excluir</button></div></div>`).join('')+(l.length>plim?`<button class="b s w" onclick="plim+=40;$('#pl2').innerHTML=prodRows()">Mostrar mais (${l.length-plim})</button>`:'');
 }
 function prodSearch(){
   return `<input type="search" placeholder="🔍 Buscar produto para editar (nome, código ou categoria)" value="${esc(pq)}" oninput="pq=this.value;plim=40;$('#pl2').innerHTML=prodRows()">
@@ -828,7 +836,7 @@ function vPerfil(){
   ${locBtn}<p id="cl" class="mu">${l?'📍 '+l.lat+', '+l.lng+(l.acc?' (±'+l.acc+' m)':''):''}</p>
   ${addrFields(m)}
   <button class="b w" onclick="saveMe()">Salvar cadastro</button></div>
-  <button class="d" onclick="sair()">Sair da conta</button>${instTip}`;
+  <button class="b rd w" style="margin-top:6px" onclick="sair()">Sair da conta</button>${instTip}`;
 }
 async function criarConta(){
   if(!sb)return alert('Sem conexão. Tente de novo com internet.');
@@ -941,6 +949,25 @@ async function syncStock(){
     if((p.est===undefined||p.est===''?null:p.est)!==v){p.est=v;if(snap.products)snap.products[p.id]=JSON.stringify(p);ch=true}
   });
   if(ch)loc();return ch;
+}
+
+/* ===== REPETIR PEDIDO ===== */
+function repetir(id){
+  const o=(S.mine||[]).find(x=>x.id==id)||S.orders.find(x=>x.id==id);
+  if(!o)return;
+  const novo={},falt=[],ajust=[];
+  (o.items||[]).forEach(i=>{
+    const p=S.products.find(x=>x.id==i.pid)||S.products.find(x=>x.n==i.n);
+    if(!p||soldOut(p)){falt.push(i.n);return}
+    const stk=stockOf(p);let q=i.q;
+    if(stk!==null&&q>stk){q=stk;ajust.push(p.n)}
+    novo[p.id]=(novo[p.id]||0)+q;
+  });
+  if(!Object.keys(novo).length)return alert('Nenhum item deste pedido está disponível agora.');
+  S.cart=novo;
+  if(!CUST){co.addr=o.addr||'';co.loc=o.loc||null;co.pay=o.pay||'Dinheiro';co.obs=o.obs||'';co.cid=(o.cid&&S.clients.some(c=>c.id==o.cid))?o.cid:''}
+  save();go('cart');
+  toastMsg('🔁 Itens do pedido no carrinho, com os preços de hoje.'+(falt.length?' Indisponíveis: '+falt.join(', ')+'.':'')+(ajust.length?' Quantidade ajustada ao estoque: '+ajust.join(', ')+'.':''));
 }
 
 applyEmp();
