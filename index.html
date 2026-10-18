@@ -162,14 +162,17 @@ const ZAP=''; /* WhatsApp da loja: só números com DDD. Ex.: '93999999999' */
 const sb=(window.supabase&&SB_URL.startsWith('http'))?window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}}):null;
 const TB=['products','clients','orders','caixa'];let snap={},logged=false,busy=0,chain=Promise.resolve();
 const loc=()=>{try{localStorage.setItem('mk',JSON.stringify(S))}catch(e){}};
-const save=()=>{loc();if(sb&&logged){busy++;chain=chain.then(push).catch(fail).finally(()=>busy--)}};
-const fail=e=>alert('Falha ao sincronizar: '+(e&&e.message||e));
+const save=()=>{loc();if(sb&&logged){busy++;chain=chain.then(push).then(()=>{fails=0}).catch(fail).finally(()=>busy--)}};
+let fails=0,rt=null;
+const fail=e=>{console.error(e);toastMsg('⚠️ Falha ao sincronizar: '+((e&&e.message)||e)+(fails<4?' — tentando de novo…':''));if(++fails<=4){clearTimeout(rt);rt=setTimeout(()=>{if(logged)save()},6000)}};
 async function pull(){
   for(const t of TB){
     const {data,error}=await sb.from(t).select('data');
     if(error){if(t=='caixa'){S.caixa=S.caixa||[];snap.caixa={};continue}return fail(error)}
-    S[t]=data.map(r=>r.data);
-    snap[t]=Object.fromEntries(S[t].map(r=>[r.id,JSON.stringify(r)]));
+    const old=S[t]||[],sn=snap[t],srv=data.map(r=>r.data);
+    const merged=srv.map(x=>{const l=old.find(y=>y.id==x.id);return(l&&sn&&sn[x.id]!==undefined&&sn[x.id]!==JSON.stringify(l))?l:x});
+    if(sn)old.forEach(l=>{if(sn[l.id]===undefined&&!srv.some(x=>x.id==l.id))merged.push(l)});
+    S[t]=merged;snap[t]=Object.fromEntries(srv.map(r=>[r.id,JSON.stringify(r)]));
   }
   S.orders.sort((a,b)=>String(b.date).localeCompare(String(a.date)));loc();
 }
@@ -193,7 +196,7 @@ async function login(){
   init();
 }
 document.addEventListener('visibilitychange',async()=>{
-  if(document.hidden)return;if(CUST){if(tab=='loja'){await loadProducts();render()}return}if(!logged||(tab!='ped'&&tab!='loja'))return;
+  if(document.hidden)return;if(CUST){if(tab=='loja'){await loadProducts();render()}return}if(!logged||printing||(tab!='ped'&&tab!='loja'))return;
   await chain;await pull();render();
 });
 const R=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -527,14 +530,17 @@ printO=function(id){
 /* avisa pedido novo: confere a cada 20 s */
 let knownO=null;
 async function pollOrders(){
-  if(!logged||busy)return;
+  if(!logged||busy||printing)return;
   const {data,error}=await sb.from('orders').select('data');
   if(error||!data||busy)return;
   const sc=await syncStock();
-  const L=data.map(r=>r.data).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const sn=snap.orders||{};
+  const L=data.map(r=>r.data).map(x=>{const l=S.orders.find(y=>y.id==x.id);return(l&&sn[x.id]!==undefined&&sn[x.id]!==JSON.stringify(l))?l:x});
+  S.orders.forEach(l=>{if(sn[l.id]===undefined&&!L.some(x=>x.id==l.id))L.push(l)});
+  L.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
   const fresh=L.filter(o=>!knownO.has(o.id));
   if(!fresh.length&&JSON.stringify(L)==JSON.stringify(S.orders)){if(sc&&(tab=='prod'||tab=='loja')&&!(document.activeElement&&document.activeElement.matches('input,textarea,select'))){const y=scrollY;render();scrollTo(0,y)}return}
-  S.orders=L;snap.orders=Object.fromEntries(L.map(r=>[r.id,JSON.stringify(r)]));L.forEach(o=>knownO.add(o.id));loc();
+  S.orders=L;snap.orders=Object.fromEntries(data.map(r=>[r.data.id,JSON.stringify(r.data)]));L.forEach(o=>knownO.add(o.id));loc();
   if(fresh.length){document.title='('+fresh.length+' novo) Painel da loja';setTimeout(()=>document.title='Mercado Mezzomo • Loja',8000)}
   if(tab=='ped'){const y=scrollY;render();scrollTo(0,y)}else renderNav();
 }
@@ -666,18 +672,29 @@ function cupom(o,logo){
   <div class="cs">${String(EMP.msg||'').split('\n').map(esc).join('<br>')}</div></div>`;
 }
 const sampleOrder=()=>({id:'00000A3F9',date:new Date().toISOString(),cn:'Maria da Silva',ph:'(93) 99999-9999',addr:'Rua das Flores, 100 - Centro',items:[{n:'ARROZ TIPO 1 5KG',u:'un',p:28.9,q:1},{n:'BANANA PRATA',u:'kg',p:6.9,q:2}],total:42.7,pay:'Dinheiro',cash:50,troco:7.3,obs:'Portão azul'});
-async function doPrint(L){
-  let st=$('#pgs');if(!st){st=document.createElement('style');st.id='pgs';document.head.appendChild(st)}
-  st.textContent=fmt=='t80'?'@page{size:80mm auto;margin:2mm}':'@page{size:A4;margin:12mm}';
-  const logo=await bwLogo(EMP.logo||'logo.png',EMP.th,EMP.lw);
-  const box=document.createElement('div');box.id='pcup';box.className='cpw';
-  box.style.setProperty('--ps',psc[fmt]);box.style.setProperty('--lw',EMP.lw+'mm');
-  box.innerHTML=L.map(o=>cupom(o,logo)).join('');document.body.appendChild(box);
-  document.body.classList.add('pr',fmt);
-  window.onafterprint=()=>{document.body.classList.remove('pr','a4','t80');box.remove()};
-  const im=box.querySelector('img');if(im&&im.decode)await im.decode().catch(()=>{});
-  window.print();
+/* ===== IMPRESSÃO EM FILA (nunca junto com a sincronização) ===== */
+let printing=false,pq2=Promise.resolve();
+function queuePrint(build){pq2=pq2.then(()=>printNow(build)).catch(e=>console.error(e));return pq2}
+async function printNow(build){
+  printing=true;
+  try{
+    await chain;await new Promise(r=>setTimeout(r,300));
+    const html=await build();
+    let st=$('#pgs');if(!st){st=document.createElement('style');st.id='pgs';document.head.appendChild(st)}
+    st.textContent=fmt=='t80'?'@page{size:80mm auto;margin:2mm}':'@page{size:A4;margin:12mm}';
+    const box=document.createElement('div');box.id='pcup';box.className='cpw';
+    box.style.setProperty('--ps',psc[fmt]);box.style.setProperty('--lw',EMP.lw+'mm');
+    box.innerHTML=html;document.body.appendChild(box);document.body.classList.add('pr',fmt);
+    const im=box.querySelector('img');if(im&&im.decode)await im.decode().catch(()=>{});
+    await new Promise(res=>{
+      const end=()=>{document.body.classList.remove('pr','a4','t80');box.remove();res()};
+      window.onafterprint=()=>setTimeout(end,300);
+      setTimeout(end,30000);
+      try{window.print()}catch(e){end();toastMsg('Não foi possível imprimir: '+e.message)}
+    });
+  }finally{setTimeout(()=>{printing=false},1500)}
 }
+function doPrint(L){return queuePrint(async()=>{const logo=await bwLogo(EMP.logo||'logo.png',EMP.th,EMP.lw);return L.map(o=>cupom(o,logo)).join('')})}
 printO=function(id){
   const L=[...document.querySelectorAll('.ord')].filter(e=>!id||e.id=='o-'+id).map(e=>S.orders.find(o=>'o-'+o.id==e.id)).filter(Boolean);
   if(!L.length)return alert('Nenhum pedido para imprimir.');
@@ -842,7 +859,7 @@ function vPerfil(){
   ${locBtn}<p id="cl" class="mu">${l?'📍 '+l.lat+', '+l.lng+(l.acc?' (±'+l.acc+' m)':''):''}</p>
   ${addrFields(m)}
   <button class="b w" onclick="saveMe()">Salvar cadastro</button></div>
-  <button class="b rd w" style="margin-top:6px" onclick="sair()">Sair da conta</button>${instTip}`;
+  <button class="d" onclick="sair()">Sair da conta</button>${instTip}`;
 }
 async function criarConta(){
   if(!sb)return alert('Sem conexão. Tente de novo com internet.');
@@ -1061,12 +1078,7 @@ function printFech(){
   ${L('Abertura',R(c.ab))}${L('+ Suprimentos',R(c.su))}${L('+ Vendas em dinheiro',R(c.dinh))}${L('- Sangrias',R(c.sa))}${L('- Despesas',R(c.de))}
   <div class="cr ct"><span>NA GAVETA</span><span>${R(c.gav)}</span></div><hr>
   <div class="cs">Impresso em ${new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}</div></div>`;
-  let st=$('#pgs');if(!st){st=document.createElement('style');st.id='pgs';document.head.appendChild(st)}
-  st.textContent=fmt=='t80'?'@page{size:80mm auto;margin:2mm}':'@page{size:A4;margin:12mm}';
-  const box=document.createElement('div');box.id='pcup';box.className='cpw';box.style.setProperty('--ps',psc[fmt]);
-  box.innerHTML=html;document.body.appendChild(box);document.body.classList.add('pr',fmt);
-  window.onafterprint=()=>{document.body.classList.remove('pr','a4','t80');box.remove()};
-  window.print();
+  return queuePrint(async()=>html);
 }
 
 applyEmp();
