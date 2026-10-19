@@ -506,7 +506,7 @@ vPed=function(){
   const l=S.orders.filter(o=>pf=='todos'||stOf(o)==pf);
   const bar=`<div class="fl">${F.map(([k,t])=>`<button class="${pf==k?'on':''}" onclick="pf='${k}';render()">${t} (${cnt(k)})</button>`).join('')}</div>`;
   if(!l.length)return bar+'<div class="card"><p class="mu">Nenhum pedido nesta lista.</p></div>';
-  return bar+`<div class="row" style="margin-bottom:10px"><select style="margin:0" aria-label="Formato de impressão" onchange="setFmt(this.value)"><option value="a4" ${fmt=='a4'?'selected':''}>Impressão: A4</option><option value="t80" ${fmt=='t80'?'selected':''}>Impressão: bobina 80 mm</option></select><span class="q"><button onclick="bump(-5)" aria-label="Diminuir letras">A−</button><b class="psv">${Math.round(psc[fmt]*100)}%</b><button onclick="bump(5)" aria-label="Aumentar letras">A+</button></span><button class="b s" style="white-space:nowrap" onclick="printO()">🖨️ Imprimir lista</button></div>`+l.map(o=>{
+  return bar+`<button class="b s w" style="margin-bottom:6px" onclick="printO()">🖨️ Imprimir lista</button><p class="mu" style="margin:0 0 10px;text-align:center"><a href="#" onclick="go('cfg');return false">⚙️ Configurar impressora e toque</a></p>`+l.map(o=>{
     const k=stOf(o),msg=`Pedido de ${o.cn}\n`+o.items.map(i=>`${i.q}x ${i.n} - ${R(i.p*i.q)}`).join('\n')+`\nTotal: ${R(o.total)}\nPagamento: ${o.pay}`+(o.troco?` (troco para ${R(o.cash)}: levar ${R(o.troco)})`:'')+`\nEndereço: ${o.addr}`+(o.loc?`\nLocalização: ${mapUrl(o.loc)}`:'')+(o.obs?`\nObs: ${o.obs}`:'');
     const ph=digits(o.ph||''),B=(t,s,c)=>`<button class="b ${c||''}" onclick="setSt('${o.id}','${s}')">${t}</button>`;
     const acts=k=='novo'?B(autoPr?'✔ Confirmar e imprimir':'✔ Confirmar pedido','conf','ok')+B('Cancelar','canc','s dg'):k=='conf'?B('Marcar entregue','ent','ok')+B('Cancelar','canc','s dg'):B('Reabrir','conf','s');
@@ -592,7 +592,7 @@ const _rn=renderNav;
 renderNav=function(){_rn();alertBar();renderAcc()};
 setInterval(()=>{
   if(CUST||!logged||Date.now()<muteUntil)return;
-  if(S.orders.some(o=>stOf(o)=='novo')){beep();if(navigator.vibrate)navigator.vibrate([300,150,300])}
+  if(S.orders.some(o=>stOf(o)=='novo')){toque();if(navigator.vibrate)navigator.vibrate([300,150,300])}
 },3000);
 async function wake(){try{if(logged&&'wakeLock' in navigator)await navigator.wakeLock.request('screen')}catch(e){}}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)wake()});
@@ -716,14 +716,14 @@ async function refPrev(){
 ICO.cfg='<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>';
 vCfg=function(){
   const E=EMP,inp=(id,l,v,ex)=>`<label>${l}</label><input id="${id}" value="${esc(v)}" ${ex||''}>`;
-  setTimeout(refPrev,0);
+  setTimeout(refPrev,0);setTimeout(refToque,0);
   return `<div class="card"><h2>Dados da empresa</h2>
   ${inp('ce-n','Nome da empresa',E.n)}
   ${inp('ce-cnpj','CNPJ',E.cnpj,'inputmode="numeric" placeholder="00.000.000/0000-00" onblur="this.value=fmtCnpj(this.value)"')}
   ${inp('ce-e','Endereço (rua e número)',E.e)}${inp('ce-c','Cidade / UF',E.c)}${inp('ce-t','Telefone / WhatsApp (com DDD)',E.tel,'type="tel"')}
   <label>Mensagem no fim do cupom</label><textarea id="ce-m" rows="2">${esc(E.msg)}</textarea>
   <label>Logotipo</label><div class="row" style="justify-content:flex-start;align-items:flex-start"><img id="lgp" alt="" src="${E.logo||'logo.png'}" style="width:90px;height:90px;object-fit:contain;background:#fff;border-radius:10px;border:1px solid var(--bd)"><div style="flex:1"><input type="file" accept="image/*" onchange="pickLogo(this)"><button class="d" onclick="EMP.logo='';$('#lgp').src='logo.png';refPrev()">Usar logotipo padrão</button></div></div></div>
-  <div class="card"><h2>Impressão do cupom</h2>
+  <div class="card"><h2>🖨️ Impressora e cupom</h2>
   <label style="display:flex;gap:10px;align-items:center;color:var(--tx);margin:4px 0 10px"><input type="checkbox" style="width:auto;margin:0" ${autoPr?'checked':''} onchange="autoPr=this.checked;try{localStorage.setItem('autoPr',this.checked?'1':'0')}catch(e){}"> Imprimir automaticamente ao confirmar o pedido</label>
   <p class="mu" style="margin:-4px 0 10px">Impressão direta, sem janela: abra o painel pelo atalho "Painel Mercado Mezzomo" criado no Windows (veja o LEIA-ME do pacote de impressão direta).</p>
   <label>Papel</label><select onchange="setFmt(this.value)"><option value="a4" ${fmt=='a4'?'selected':''}>A4</option><option value="t80" ${fmt=='t80'?'selected':''}>Bobina 80 mm (Bematech)</option></select>
@@ -731,7 +731,14 @@ vCfg=function(){
   <label>Tamanho do logotipo: <b id="lwv">${E.lw}</b> mm</label><input type="range" min="20" max="70" value="${E.lw}" oninput="EMP.lw=+this.value;$('#lwv').textContent=this.value;refPrev()">
   <label>Escuridão do logotipo (preto e branco com pontilhado)</label><input type="range" min="100" max="230" value="${E.th}" oninput="EMP.th=+this.value;refPrev()">
   <p class="mu">Prévia do cupom (tamanho real):</p><div id="pv2" class="cpw pvw"></div><br>
-  <div class="g2"><button class="b" onclick="saveEmp()">Salvar ajustes</button><button class="b s" onclick="doPrint([sampleOrder()])">🖨️ Imprimir teste</button></div></div>`;
+  <div class="g2"><button class="b" onclick="saveEmp()">Salvar ajustes</button><button class="b s" onclick="doPrint([sampleOrder()])">🖨️ Imprimir teste</button></div></div>
+  <div class="card"><h2>🔔 Toque de novo pedido</h2>
+  <p class="mu">Toca sem parar até o pedido ser confirmado ou cancelado. A escolha vale para este aparelho e é salva sozinha.</p>
+  <label>Toque</label><select id="tq" onchange="setToque(this.value)"><option value="classico">1 · Clássico (bipes)</option><option value="sino">2 · Sino</option><option value="sirene">3 · Sirene</option><option value="custom" disabled>Meu toque (envie um arquivo)</option></select>
+  <label>Volume</label><input type="range" min="10" max="100" value="${Math.round(tvol*100)}" oninput="tvol=this.value/100;try{localStorage.setItem('tvol',tvol)}catch(e){}" onchange="testToque()">
+  <div class="g2"><button class="b s" onclick="testToque()">▶ Ouvir</button><button class="b s" onclick="$('#tfile').click()">⬆ Enviar meu toque</button></div>
+  <input id="tfile" type="file" accept="audio/*" hidden onchange="pickToque(this)">
+  <button id="tdel" class="b rd w" style="margin-top:8px" hidden onclick="delToque()">Remover meu toque</button></div>`;
 };
 function pickLogo(inp){
   const f=inp.files[0];if(!f)return;
@@ -1081,6 +1088,62 @@ function printFech(){
   <div class="cr ct"><span>NA GAVETA</span><span>${R(c.gav)}</span></div><hr>
   <div class="cs">Impresso em ${new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}</div></div>`;
   return queuePrint(async()=>html);
+}
+
+/* ===== TOQUE DE NOVO PEDIDO (3 opções + toque próprio) ===== */
+let tq='classico',tvol=1,tCustom=null,tAudio=null;
+try{tq=localStorage.getItem('toque')||'classico';tvol=parseFloat(localStorage.getItem('tvol')||'1')||1}catch(e){}
+const kvOpen=()=>new Promise((res,rej)=>{const r=indexedDB.open('mezzomo',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+const kvGet=async k=>{const d=await kvOpen();return new Promise((res,rej)=>{const q=d.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})};
+const kvSet=async(k,v)=>{const d=await kvOpen();return new Promise((res,rej)=>{const t=d.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=()=>res();t.onerror=()=>rej(t.error)})};
+const kvDel=async k=>{const d=await kvOpen();return new Promise((res,rej)=>{const t=d.transaction('kv','readwrite');t.objectStore('kv').delete(k);t.oncomplete=()=>res();t.onerror=()=>rej(t.error)})};
+function setCustom(c){tCustom=c;tAudio=c?new Audio(URL.createObjectURL(c.blob)):null}
+try{kvGet('toque').then(c=>{if(c&&c.blob)setCustom(c)}).catch(()=>{})}catch(e){}
+function tone(f,t,d,type,g){
+  const o=AC.createOscillator(),n=AC.createGain(),a=AC.currentTime+t;
+  o.type=type;o.frequency.setValueAtTime(f,a);
+  n.gain.setValueAtTime(.0001,a);n.gain.exponentialRampToValueAtTime(Math.max(.0002,g*tvol),a+.02);n.gain.exponentialRampToValueAtTime(.0001,a+d);
+  o.connect(n);n.connect(AC.destination);o.start(a);o.stop(a+d+.05);
+}
+function toque(){
+  if(tq=='custom'&&tAudio){
+    if(!tAudio.paused&&!tAudio.ended)return;
+    tAudio.currentTime=0;tAudio.volume=Math.min(1,tvol);tAudio.play().catch(()=>{});return;
+  }
+  unlock();if(!AC)return;
+  if(tq=='sino'){[[1318,0],[1046,.7]].forEach(([f,t])=>{tone(f,t,1.3,'sine',.5);tone(f*2.01,t,.7,'sine',.15)});return}
+  if(tq=='sirene'){
+    [0,.55].forEach(t=>{
+      const o=AC.createOscillator(),n=AC.createGain(),a=AC.currentTime+t;
+      o.type='sawtooth';o.frequency.setValueAtTime(620,a);o.frequency.linearRampToValueAtTime(940,a+.25);o.frequency.linearRampToValueAtTime(620,a+.5);
+      n.gain.setValueAtTime(Math.max(.0002,.2*tvol),a);n.gain.linearRampToValueAtTime(.0001,a+.5);
+      o.connect(n);n.connect(AC.destination);o.start(a);o.stop(a+.52);
+    });return;
+  }
+  [0,.3,.6].forEach((t,i)=>tone(i%2?1100:880,t,.25,'square',.3));
+}
+function testToque(){if(tAudio){tAudio.pause();tAudio.currentTime=0}toque()}
+function setToque(v){tq=v;try{localStorage.setItem('toque',v)}catch(e){}testToque()}
+function refToque(){
+  const s=$('#tq');if(!s)return;
+  const o=s.querySelector('option[value="custom"]');
+  if(o){o.disabled=!tCustom;o.textContent=tCustom?'Meu toque: '+tCustom.name:'Meu toque (envie um arquivo)'}
+  s.value=tq;
+  const d=$('#tdel');if(d)d.hidden=!tCustom;
+}
+async function pickToque(inp){
+  const f=inp.files[0];if(!f)return;
+  if(!/^audio\//.test(f.type)&&!/\.(mp3|wav|ogg|m4a|aac)$/i.test(f.name))return alert('Escolha um arquivo de áudio (mp3, wav, ogg ou m4a).');
+  if(f.size>3*1024*1024)return alert('O arquivo é grande demais. Use um áudio de até 3 MB.');
+  const c={name:f.name,blob:new Blob([f],{type:f.type||'audio/mpeg'})};
+  try{await kvSet('toque',c)}catch(e){return alert('Não foi possível guardar o toque neste aparelho.')}
+  setCustom(c);tq='custom';try{localStorage.setItem('toque','custom')}catch(e){}
+  refToque();testToque();inp.value='';
+}
+async function delToque(){
+  try{await kvDel('toque')}catch(e){}
+  setCustom(null);if(tq=='custom'){tq='classico';try{localStorage.setItem('toque',tq)}catch(e){}}
+  refToque();
 }
 
 applyEmp();
