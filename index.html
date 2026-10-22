@@ -144,6 +144,11 @@ button.b.rd,a.b.rd{background:linear-gradient(180deg,#e85a46,#c0392b);color:#fff
 .cx-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--bd)}
 .chart{display:flex;align-items:flex-end;gap:6px;overflow-x:auto;padding-top:6px}.chart div{flex:1;min-width:34px;text-align:center;font-size:10px;color:var(--mu)}
 .chart i{display:block;background:linear-gradient(180deg,var(--b1),var(--b2));border-radius:6px 6px 0 0;margin-bottom:3px}
+.up{background:linear-gradient(180deg,var(--b1),var(--b2));color:#fff;width:50px;height:50px;opacity:0;pointer-events:none;transform:translateY(12px);transition:opacity .2s,transform .2s;cursor:pointer;bottom:calc(136px + env(safe-area-inset-bottom,0px));z-index:6}
+.up.show{opacity:1;pointer-events:auto;transform:none}
+.up:active{transform:scale(.94)}
+.up svg{width:24px;height:24px;stroke:#fff;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+#wa[hidden]~.up{bottom:calc(80px + env(safe-area-inset-bottom,0px))}
 </style></head><body>
 <header class="top"><img id="hl" src="logo.png" alt="" onerror="this.style.display='none'"><div class="sp"><b>Mercado Mezzomo</b><small id="sub">Rua Jair Antonio Fortes, nº 626 · Novo Progresso/PA</small></div><button class="b s" id="ins" hidden style="padding:6px 10px;font-size:13px" onclick="ip.prompt()">Instalar app</button><button class="b rd" id="lo" hidden onclick="sb.auth.signOut().then(()=>location.reload())">Sair</button><button class="acc" id="acc" hidden onclick="go('eu')" aria-label="Minha conta"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg><i hidden></i></button></header>
 <main id="v"></main>
@@ -404,7 +409,7 @@ vLoja=function(){
   <select aria-label="Categoria" onchange="cat=this.value;lim=60;$('#pl').innerHTML=listHtml()"><option value="">Todos (${S.products.length})</option>${catList().map(([c,k])=>`<option value="${esc(c)}" ${cat==c?'selected':''}>${esc(c)} (${k})</option>`).join('')}</select>
   <select aria-label="Ordenar" onchange="ord=this.value;lim=60;$('#pl').innerHTML=listHtml()">${[['az','A-Z'],['za','Z-A'],['lo','Menor preço'],['hi','Maior preço']].map(([v,x])=>`<option value="${v}" ${ord==v?'selected':''}>Ordenar: ${x}</option>`).join('')}</select></div>
   <div id="pl">${listHtml()}</div>
-  <button class="up" aria-label="Voltar ao topo" onclick="scrollTo({top:0,behavior:'smooth'})">↑</button>
+  
   ${n?`<button class="b cb" onclick="go('cart')">🛒 Ver carrinho · ${n} ${n>1?'itens':'item'} · ${R(total())}</button>`:''}`;
 };
 add=function(id,d){
@@ -1143,6 +1148,17 @@ async function delToque(){
   setCustom(null);if(tq=='custom'){tq='classico';try{localStorage.setItem('toque',tq)}catch(e){}}
   refToque();
 }
+
+/* ===== BOTÃO "VOLTAR AO TOPO" ===== */
+(function(){
+  const b=document.createElement('button');
+  b.id='up';b.className='up';b.setAttribute('aria-label','Voltar ao topo');b.title='Voltar ao topo';
+  b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+  b.onclick=()=>scrollTo({top:0,behavior:'smooth'});
+  document.body.appendChild(b);
+  const t=()=>b.classList.toggle('show',scrollY>400);
+  addEventListener('scroll',t,{passive:true});t();
+})();
 
 applyEmp();
 init();
