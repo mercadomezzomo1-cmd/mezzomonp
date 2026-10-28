@@ -151,6 +151,11 @@ button.b.rd,a.b.rd{background:linear-gradient(180deg,#e85a46,#c0392b);color:#fff
 .up:active{transform:scale(.94)}
 .up svg{width:24px;height:24px;stroke:#fff;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
 #wa[hidden]~.up{bottom:calc(80px + env(safe-area-inset-bottom,0px))}
+.pixm{position:fixed;inset:0;z-index:150;background:#000a;display:flex;align-items:flex-start;justify-content:center;padding:calc(14px + env(safe-area-inset-top,0px)) 14px 14px;overflow:auto}
+.pixb{background:var(--card);color:var(--tx);border-radius:18px;padding:18px;max-width:420px;width:100%;box-shadow:0 10px 40px #0006}
+.pixqr{display:flex;justify-content:center;margin:8px 0}
+.pixqr svg{width:min(260px,100%);height:auto;border-radius:10px;border:1px solid var(--bd)}
+.pixb textarea{font:12px/1.35 ui-monospace,Consolas,monospace;word-break:break-all}
 </style></head><body>
 <header class="top"><img id="hl" src="logo.png" alt="" onerror="this.style.display='none'"><div class="sp"><b>Mercado Mezzomo</b><small id="sub">Painel da loja · Rua Jair Antonio Fortes, nº 626</small></div><button class="b s" id="ins" hidden style="padding:6px 10px;font-size:13px" onclick="ip.prompt()">Instalar app</button><button class="b rd" id="lo" hidden onclick="sb.auth.signOut().then(()=>location.reload())">Sair</button><button class="acc" id="acc" hidden onclick="go('eu')" aria-label="Minha conta"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg><i hidden></i></button></header>
 <main id="v"></main>
@@ -277,7 +282,7 @@ function vCart(){
   ${co.loc?`<p class="mu">Local: <a target="_blank" rel="noopener" href="${mapUrl(co.loc)}">${co.loc.lat}, ${co.loc.lng}</a>${co.loc.acc?' (±'+co.loc.acc+' m)':''}</p>`:''}
   <label style="display:block;margin-top:10px">Forma de pagamento</label>
   <select onchange="co.pay=this.value;render()">${['Dinheiro','Pix','Cartão'].map(x=>`<option ${co.pay==x?'selected':''}>${x}</option>`).join('')}</select>
-  ${co.pay=='Dinheiro'?`<label>Troco para quanto? (deixe vazio se não precisa)</label><input type="number" inputmode="decimal" min="0" step="0.01" value="${esc(co.cash)}" oninput="co.cash=this.value;trocoTxt()"><p id="tr" class="mu"></p>`:''}
+  ${co.pay=='Pix'&&EMP.pix?'<p class="mu">💠 O código Pix (copia e cola) e o QR Code aparecem ao enviar o pedido.</p>':''}${co.pay=='Dinheiro'?`<label>Troco para quanto? (deixe vazio se não precisa)</label><input type="number" inputmode="decimal" min="0" step="0.01" value="${esc(co.cash)}" oninput="co.cash=this.value;trocoTxt()"><p id="tr" class="mu"></p>`:''}
   <label>Observações</label><input value="${esc(co.obs)}" oninput="co.obs=this.value" placeholder="Ex.: portão azul">
   <div class="row"><span>Total</span><span class="tot">${R(total())}</span></div><br>
   <button class="b w" onclick="finish()">Finalizar pedido</button></div>`;
@@ -348,7 +353,7 @@ function saveC(){
 function vPed(){
   if(!S.orders.length)return '<div class="card"><h2>Nenhum pedido ainda</h2><p class="mu">Os pedidos finalizados aparecem aqui.</p></div>';
   return `<button class="b s w" style="margin-bottom:10px" onclick="printO()">🖨️ Imprimir pedidos pendentes</button>`+S.orders.map(o=>{
-    const msg=`Pedido de ${o.cn}\n`+o.items.map(i=>`${i.q}x ${i.n} - ${R(i.p*i.q)}`).join('\n')+`\nTotal: ${R(o.total)}\nPagamento: ${o.pay}`+(o.troco?` (troco para ${R(o.cash)}: levar ${R(o.troco)})`:'')+`\nEndereço: ${o.addr}`+(o.loc?`\nLocalização: ${mapUrl(o.loc)}`:'')+(o.obs?`\nObs: ${o.obs}`:'');
+    const msg=`Pedido de ${o.cn}\n`+o.items.map(i=>`${i.q}x ${i.n} - ${R(i.p*i.q)}`).join('\n')+`\nTotal: ${R(o.total)}\nPagamento: ${o.pay}`+(o.troco?` (troco para ${R(o.cash)}: levar ${R(o.troco)})`:'')+`\nEndereço: ${o.addr}`+(o.loc?`\nLocalização: ${mapUrl(o.loc)}`:'')+(o.obs?`\nObs: ${o.obs}`:'')+(o.pay=='Pix'&&EMP.pix?`\n\nPix copia e cola:\n${pixCode(o)}`:'');
     const ph=String(o.ph||'').replace(/\D/g,'');
     return `<div class="card ord" id="o-${o.id}"><div class="row"><b>${esc(o.cn)}</b><span class="tag ${o.done?'ok':''}">${o.done?'Entregue':'Pendente'}</span></div>
     <div class="mu">${new Date(o.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}</div>
@@ -357,7 +362,7 @@ function vPed(){
     <div class="row" style="margin-top:8px"><span class="mu">${o.pay}${o.troco?` · levar troco ${R(o.troco)} (de ${R(o.cash)})`:''}</span><span class="tot">${R(o.total)}</span></div>
     ${o.obs?`<div class="mu">Obs: ${esc(o.obs)}</div>`:''}
     <div class="row" style="margin-top:10px;justify-content:flex-start;flex-wrap:wrap">
-    <button class="b s" onclick="printO('${o.id}')">🖨️ Imprimir</button><button class="b s" onclick="repetir('${o.id}')">🔁 Repetir</button>
+    <button class="b s" onclick="printO('${o.id}')">🖨️ Imprimir</button><button class="b s" onclick="repetir('${o.id}')">🔁 Repetir</button>${o.pay=='Pix'&&EMP.pix?`<button class="b s" onclick="showPix('${o.id}')">💠 Código Pix</button>`:''}
     <button class="b s" onclick="tg('${o.id}')">${o.done?'Reabrir':'Marcar entregue'}</button>
     ${ph?`<a class="b s" target="_blank" rel="noopener" href="https://wa.me/55${ph}?text=${encodeURIComponent(msg)}">WhatsApp</a>`:''}
     <button class="b rd" onclick="S.orders=S.orders.filter(x=>x.id!='${o.id}');save();render()">🗑 Excluir</button></div></div>`}).join('');
@@ -389,7 +394,7 @@ function mineHtml(l){
   if(!l.length)return '<div class="card"><p class="mu">Você ainda não fez pedidos.</p></div>';
   return l.map(o=>`<div class="card"><div class="row"><b>${R(o.total)}</b>${stTag(o)}</div>
   <div class="mu">${new Date(o.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})} · ${esc(o.pay)}${o.troco?' · troco para '+R(o.cash):''}</div>
-  <p>${o.items.map(i=>`${i.q}× ${esc(i.n)}`).join('<br>')}</p><button class="b w" onclick="repetir('${o.id}')">🔁 Repetir este pedido</button></div>`).join('');
+  <p>${o.items.map(i=>`${i.q}× ${esc(i.n)}`).join('<br>')}</p>${o.pay=='Pix'&&EMP.pix&&(stOf(o)=='novo'||stOf(o)=='conf')?`<button class="b ok w" style="margin-bottom:8px" onclick="showPix('${o.id}')">💠 Pagar com Pix</button>`:''}<button class="b w" onclick="repetir('${o.id}')">🔁 Repetir este pedido</button></div>`).join('');
 }
 function vMeus(){setTimeout(loadMeus,0);return '<h2>Meus pedidos</h2><div id="mp">'+mineHtml(S.mine)+'</div>';}
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
@@ -465,7 +470,7 @@ async function finishC(){
     return alert('Não foi possível enviar o pedido: '+error.message);
   }
   S.mine.unshift(o);loadProducts();S.cart={};co={cid:'',addr:'',loc:null,pay:'Dinheiro',cash:'',obs:''};save();
-  alert('Pedido enviado! A loja vai entrar em contato.');go('meus');
+  if(o.pay=='Pix'&&EMP.pix){go('meus');showPix(o,true)}else{alert('Pedido enviado! A loja vai entrar em contato.');go('meus')}
 }
 vMeus=function(){
   if(!user)return '<div class="card"><p class="mu">Entre na sua conta para ver seus pedidos.</p><button class="b" onclick="go(\'eu\')">Entrar</button></div>';
@@ -512,7 +517,7 @@ vPed=function(){
   const bar=`<div class="fl">${F.map(([k,t])=>`<button class="${pf==k?'on':''}" onclick="pf='${k}';render()">${t} (${cnt(k)})</button>`).join('')}</div>`;
   if(!l.length)return bar+'<div class="card"><p class="mu">Nenhum pedido nesta lista.</p></div>';
   return bar+`<button class="b s w" style="margin-bottom:6px" onclick="printO()">🖨️ Imprimir lista</button><p class="mu" style="margin:0 0 10px;text-align:center"><a href="#" onclick="go('cfg');return false">⚙️ Configurar impressora e toque</a></p>`+l.map(o=>{
-    const k=stOf(o),msg=`Pedido de ${o.cn}\n`+o.items.map(i=>`${i.q}x ${i.n} - ${R(i.p*i.q)}`).join('\n')+`\nTotal: ${R(o.total)}\nPagamento: ${o.pay}`+(o.troco?` (troco para ${R(o.cash)}: levar ${R(o.troco)})`:'')+`\nEndereço: ${o.addr}`+(o.loc?`\nLocalização: ${mapUrl(o.loc)}`:'')+(o.obs?`\nObs: ${o.obs}`:'');
+    const k=stOf(o),msg=`Pedido de ${o.cn}\n`+o.items.map(i=>`${i.q}x ${i.n} - ${R(i.p*i.q)}`).join('\n')+`\nTotal: ${R(o.total)}\nPagamento: ${o.pay}`+(o.troco?` (troco para ${R(o.cash)}: levar ${R(o.troco)})`:'')+`\nEndereço: ${o.addr}`+(o.loc?`\nLocalização: ${mapUrl(o.loc)}`:'')+(o.obs?`\nObs: ${o.obs}`:'')+(o.pay=='Pix'&&EMP.pix?`\n\nPix copia e cola:\n${pixCode(o)}`:'');
     const ph=digits(o.ph||''),B=(t,s,c)=>`<button class="b ${c||''}" onclick="setSt('${o.id}','${s}')">${t}</button>`;
     const acts=k=='novo'?B(autoPr?'✔ Confirmar e imprimir':'✔ Confirmar pedido','conf','ok')+B('Cancelar','canc','s dg'):k=='conf'?B('Marcar entregue','ent','ok')+B('Cancelar','canc','s dg'):B('Reabrir','conf','s');
     return `<div class="card ord" id="o-${o.id}" data-st="${k}"><div class="row"><b>${esc(o.cn)} <span class="mu">#${o.id.slice(-4).toUpperCase()}</span></b>${stTag(o)}</div>
@@ -522,7 +527,7 @@ vPed=function(){
     <div class="row" style="margin-top:8px"><span class="mu">${o.pay}${o.troco?` · levar troco ${R(o.troco)} (de ${R(o.cash)})`:''}</span><span class="tot">${R(o.total)}</span></div>
     ${o.obs?`<div class="mu">Obs: ${esc(o.obs)}</div>`:''}
     <div class="acts2">${acts}
-    <button class="b s" onclick="printO('${o.id}')">🖨️ Imprimir</button><button class="b s" onclick="repetir('${o.id}')">🔁 Repetir</button>
+    <button class="b s" onclick="printO('${o.id}')">🖨️ Imprimir</button><button class="b s" onclick="repetir('${o.id}')">🔁 Repetir</button>${o.pay=='Pix'&&EMP.pix?`<button class="b s" onclick="showPix('${o.id}')">💠 Código Pix</button>`:''}
     ${ph?`<a class="b s" target="_blank" rel="noopener" href="https://wa.me/${ph.length<=11?'55':''}${ph}?text=${encodeURIComponent(msg)}">WhatsApp</a>`:''}
     <button class="b rd" onclick="S.orders=S.orders.filter(x=>x.id!='${o.id}');save();render()">🗑 Excluir</button></div></div>`}).join('');
 };
@@ -613,7 +618,7 @@ printO=function(id){
 
 /* ===== DADOS DA EMPRESA, CUPOM AJUSTÁVEL E LOGOTIPO ===== */
 const LOGO_C='data:image/png;base64,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';
-const EMP0={n:'Mercado Mezzomo',cnpj:'',e:'Rua Jair Antonio Fortes, nº 626',c:'Novo Progresso/PA',tel:'',msg:'Obrigado pela preferência!\nDeus seja louvado',logo:'',lw:40,th:165};
+const EMP0={n:'Mercado Mezzomo',cnpj:'',e:'Rua Jair Antonio Fortes, nº 626',c:'Novo Progresso/PA',tel:'',msg:'Obrigado pela preferência!\nDeus seja louvado',logo:'',lw:40,th:165,pix:'',pixT:'cnpj'};
 let EMP={...EMP0},psc={a4:1,t80:1},autoPr=true;
 try{autoPr=localStorage.getItem('autoPr')!='0'}catch(e){}
 try{Object.assign(EMP,JSON.parse(localStorage.getItem('mkcfg')||'{}'))}catch(e){}
@@ -726,6 +731,8 @@ vCfg=function(){
   ${inp('ce-n','Nome da empresa',E.n)}
   ${inp('ce-cnpj','CNPJ',E.cnpj,'inputmode="numeric" placeholder="00.000.000/0000-00" onblur="this.value=fmtCnpj(this.value)"')}
   ${inp('ce-e','Endereço (rua e número)',E.e)}${inp('ce-c','Cidade / UF',E.c)}${inp('ce-t','Telefone / WhatsApp (com DDD)',E.tel,'type="tel"')}
+  <label>Chave Pix da loja (para receber os pagamentos)</label><div class="g2"><select id="ce-pt" aria-label="Tipo da chave Pix">${[['cpf','CPF'],['cnpj','CNPJ'],['cel','Celular'],['email','E-mail'],['evp','Chave aleatória']].map(([v,t])=>`<option value="${v}" ${(E.pixT||'cnpj')==v?'selected':''}>${t}</option>`).join('')}</select><input id="ce-pk" value="${esc(E.pix||'')}" placeholder="Digite a chave" style="margin:4px 0 8px"></div>
+  <p class="mu" style="margin-top:-4px">Quem escolher Pix recebe o código "copia e cola" e o QR Code com o valor do pedido. No banco, o pagamento aparece para ${esc(String(E.n||'').toUpperCase().slice(0,25))}.</p>
   <label>Mensagem no fim do cupom</label><textarea id="ce-m" rows="2">${esc(E.msg)}</textarea>
   <label>Logotipo</label><div class="row" style="justify-content:flex-start;align-items:flex-start"><img id="lgp" alt="" src="${E.logo||'logo.png'}" style="width:90px;height:90px;object-fit:contain;background:#fff;border-radius:10px;border:1px solid var(--bd)"><div style="flex:1"><input type="file" accept="image/*" onchange="pickLogo(this)"><button class="d" onclick="EMP.logo='';$('#lgp').src='logo.png';refPrev()">Usar logotipo padrão</button></div></div></div>
   <div class="card"><h2>🖨️ Impressora e cupom</h2>
@@ -757,7 +764,9 @@ function pickLogo(inp){
 }
 async function saveEmp(){
   const g=i=>$('#'+i).value.trim();
-  Object.assign(EMP,{n:g('ce-n')||EMP0.n,cnpj:fmtCnpj(g('ce-cnpj')),e:g('ce-e'),c:g('ce-c'),tel:g('ce-t'),msg:$('#ce-m').value.trim()});
+  const pk=g('ce-pk'),pt=$('#ce-pt').value;
+  if(pk&&!pixKeyNorm(pk,pt))return alert('A chave Pix não confere com o tipo escolhido. Confira o número, o e-mail ou a chave aleatória.');
+  Object.assign(EMP,{n:g('ce-n')||EMP0.n,cnpj:fmtCnpj(g('ce-cnpj')),e:g('ce-e'),c:g('ce-c'),tel:g('ce-t'),msg:$('#ce-m').value.trim(),pix:pk,pixT:pt});
   try{localStorage.setItem('mkcfg',JSON.stringify(EMP))}catch(e){}
   applyEmp();
   if(!sb)return alert('Ajustes salvos neste aparelho.');
@@ -1161,6 +1170,130 @@ async function delToque(){
   const t=()=>b.classList.toggle('show',scrollY>400);
   addEventListener('scroll',t,{passive:true});t();
 })();
+
+/* Gerador de QR Code (modo byte, correção M, versões 1 a 14) — sem dependências */
+function qrMatrix(text){
+  const data=Array.from(new TextEncoder().encode(text));
+  const T=[null,[10,[[1,16]]],[16,[[1,28]]],[26,[[1,44]]],[18,[[2,32]]],[24,[[2,43]]],[16,[[4,27]]],[18,[[4,31]]],[22,[[2,38],[2,39]]],[22,[[3,36],[2,37]]],[26,[[4,43],[1,44]]],[30,[[1,50],[4,51]]],[22,[[6,36],[2,37]]],[22,[[8,37],[1,38]]],[24,[[4,40],[5,41]]]];
+  const AP=[null,[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66]];
+  let v=1;
+  for(;v<=14;v++){const cap=T[v][1].reduce((s,[k,d])=>s+k*d,0);if(4+(v<10?8:16)+data.length*8<=cap*8)break}
+  if(v>14)return null;
+  const [ecn,blk]=T[v],total=blk.reduce((s,[k,d])=>s+k*d,0);
+  const bb=[],put=(val,len)=>{for(let i=len-1;i>=0;i--)bb.push((val>>i)&1)};
+  put(4,4);put(data.length,v<10?8:16);data.forEach(b=>put(b,8));
+  put(0,Math.min(4,total*8-bb.length));while(bb.length%8)bb.push(0);
+  const cw=[];for(let i=0;i<bb.length;i+=8)cw.push(parseInt(bb.slice(i,i+8).join(''),2));
+  for(let p=0;cw.length<total;p^=1)cw.push(p?0x11:0xEC);
+  const exp=[],log=[];let x=1;
+  for(let i=0;i<255;i++){exp[i]=x;log[x]=i;x<<=1;if(x&256)x^=0x11D}
+  for(let i=255;i<512;i++)exp[i]=exp[i-255];
+  const mul=(a,b)=>a&&b?exp[log[a]+log[b]]:0;
+  let g=[1];
+  for(let i=0;i<ecn;i++){const ng=new Array(g.length+1).fill(0);for(let j=0;j<g.length;j++){ng[j]^=g[j];ng[j+1]^=mul(g[j],exp[i])}g=ng}
+  const rs=d=>{const r=new Array(ecn).fill(0);for(const b of d){const f=b^r[0];r.shift();r.push(0);if(f)for(let j=0;j<ecn;j++)r[j]^=mul(g[j+1],f)}return r};
+  const blocks=[];let p0=0;
+  for(const [k,d] of blk)for(let i=0;i<k;i++){blocks.push(cw.slice(p0,p0+d));p0+=d}
+  const ecs=blocks.map(rs),out=[],maxd=Math.max(...blocks.map(b=>b.length));
+  for(let i=0;i<maxd;i++)blocks.forEach(b=>{if(i<b.length)out.push(b[i])});
+  for(let i=0;i<ecn;i++)ecs.forEach(e=>out.push(e[i]));
+  const fb=[];out.forEach(b=>{for(let i=7;i>=0;i--)fb.push((b>>i)&1)});
+  const n=17+4*v,M=Array.from({length:n},()=>new Array(n).fill(0)),F=Array.from({length:n},()=>new Array(n).fill(false));
+  const set=(r,c,val)=>{M[r][c]=val?1:0;F[r][c]=true};
+  const finder=(r0,c0)=>{for(let dr=-1;dr<=7;dr++)for(let dc=-1;dc<=7;dc++){const r=r0+dr,c=c0+dc;if(r<0||c<0||r>=n||c>=n)continue;set(r,c,dr>=0&&dr<=6&&dc>=0&&dc<=6&&(dr==0||dr==6||dc==0||dc==6||(dr>=2&&dr<=4&&dc>=2&&dc<=4)))}};
+  finder(0,0);finder(0,n-7);finder(n-7,0);
+  for(let i=8;i<n-8;i++){set(6,i,i%2==0);set(i,6,i%2==0)}
+  const ap=AP[v],last=ap[ap.length-1];
+  for(const r of ap)for(const c of ap){
+    if((r==6&&c==6)||(r==6&&c==last)||(r==last&&c==6))continue;
+    for(let dr=-2;dr<=2;dr++)for(let dc=-2;dc<=2;dc++)set(r+dr,c+dc,Math.max(Math.abs(dr),Math.abs(dc))!=1);
+  }
+  for(let i=0;i<9;i++){if(i!=6){F[8][i]=true;F[i][8]=true}}
+  for(let i=0;i<8;i++){F[8][n-1-i]=true;F[n-1-i][8]=true}
+  set(n-8,8,1);
+  if(v>=7){for(let i=0;i<6;i++)for(let j=0;j<3;j++){F[i][n-11+j]=true;F[n-11+j][i]=true}}
+  let bi=0;
+  for(let c=n-1,up=true;c>0;c-=2,up=!up){
+    if(c==6)c=5;
+    for(let i=0;i<n;i++){const r=up?n-1-i:i;for(let k=0;k<2;k++){const cc=c-k;if(!F[r][cc])M[r][cc]=bi<fb.length?fb[bi++]:0}}
+  }
+  const maskFn=[(r,c)=>(r+c)%2==0,(r,c)=>r%2==0,(r,c)=>c%3==0,(r,c)=>(r+c)%3==0,(r,c)=>(Math.floor(r/2)+Math.floor(c/3))%2==0,(r,c)=>(r*c)%2+(r*c)%3==0,(r,c)=>((r*c)%2+(r*c)%3)%2==0,(r,c)=>(((r+c)%2)+(r*c)%3)%2==0];
+  const withMask=mk=>{
+    const m=M.map(row=>row.slice());
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(!F[r][c]&&maskFn[mk](r,c))m[r][c]^=1;
+    let rem=mk<<10;for(let i=14;i>=10;i--)if((rem>>i)&1)rem^=0x537<<(i-10);
+    const bits=((mk<<10)|rem)^0x5412,b=i=>(bits>>i)&1;
+    for(let i=0;i<=5;i++)m[i][8]=b(i);
+    m[7][8]=b(6);m[8][8]=b(7);m[8][7]=b(8);
+    for(let i=9;i<15;i++)m[8][14-i]=b(i);
+    for(let i=0;i<8;i++)m[8][n-1-i]=b(i);
+    for(let i=8;i<15;i++)m[n-15+i][8]=b(i);
+    m[n-8][8]=1;
+    if(v>=7){let r=v;for(let i=0;i<12;i++)r=(r<<1)^((r>>11)*0x1F25);const vb=(v<<12)|r;
+      for(let i=0;i<18;i++){const bit=(vb>>i)&1,a=n-11+i%3,q=Math.floor(i/3);m[q][a]=bit;m[a][q]=bit}}
+    return m;
+  };
+  const penalty=m=>{
+    let pen=0,dark=0;
+    const line=get=>{let run=1,prev=get(0),s=''+prev;for(let i=1;i<n;i++){const cur=get(i);s+=cur;if(cur==prev)run++;else{if(run>=5)pen+=3+run-5;run=1;prev=cur}}if(run>=5)pen+=3+run-5;
+      for(let i=0;i+11<=n;i++){const w=s.substr(i,11);if(w=='10111010000'||w=='00001011101')pen+=40}};
+    for(let r=0;r<n;r++){line(i=>m[r][i]);line(i=>m[i][r]);for(let c=0;c<n;c++){dark+=m[r][c];if(r<n-1&&c<n-1&&m[r][c]==m[r][c+1]&&m[r][c]==m[r+1][c]&&m[r][c]==m[r+1][c+1])pen+=3}}
+    pen+=(Math.ceil(Math.abs(dark*20-n*n*10)/(n*n))-1)*10;
+    return pen;
+  };
+  let best=null,bp=1e9;
+  for(let mk=0;mk<8;mk++){const m=withMask(mk),pn=penalty(m);if(pn<bp){bp=pn;best=m}}
+  return best;
+}
+/* ===== PIX COPIA E COLA + QR CODE ===== */
+const ascii=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\x20-\x7E]/g,'');
+const pixTxt=t=>ascii(t).toUpperCase().replace(/[^A-Z0-9 ]/g,'').replace(/\s+/g,' ').trim();
+const tlv=(id,v)=>id+String(v.length).padStart(2,'0')+v;
+function crc16(s){let c=0xFFFF;for(let i=0;i<s.length;i++){c^=s.charCodeAt(i)<<8;for(let j=0;j<8;j++)c=(c&0x8000)?((c<<1)^0x1021):(c<<1);c&=0xFFFF}return c.toString(16).toUpperCase().padStart(4,'0')}
+function pixKeyNorm(k,t){
+  k=String(k||'').trim();const d=k.replace(/\D/g,'');
+  if(t=='cpf')return d.length==11?d:'';
+  if(t=='cnpj')return d.length==14?d:'';
+  if(t=='cel'){const n=d.length>=12&&d.startsWith('55')?d.slice(2):d;return n.length==10||n.length==11?'+55'+n:''}
+  if(t=='email')return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(k)&&k.length<=77?k.toLowerCase():'';
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(k)?k.toLowerCase():'';
+}
+function pixCode(o){
+  const key=pixKeyNorm(EMP.pix,EMP.pixT||'cnpj');if(!key)return '';
+  const nome=pixTxt(EMP.n).slice(0,25)||'LOJA',cid=pixTxt(String(EMP.c||'').split('/')[0]).slice(0,15)||'BRASIL';
+  const val=Math.round((o.total||0)*100)/100;
+  const txid=('PED'+String(o.id).replace(/[^A-Za-z0-9]/g,'').slice(-10)).toUpperCase();
+  const p='000201010211'+tlv('26',tlv('00','BR.GOV.BCB.PIX')+tlv('01',key))+'52040000'+'5303986'+(val>0?tlv('54',val.toFixed(2)):'')+'5802BR'+tlv('59',nome)+tlv('60',cid)+tlv('62',tlv('05',txid))+'6304';
+  return p+crc16(p);
+}
+async function showPix(x,fresh){
+  const o=typeof x=='object'?x:((S.mine||[]).find(y=>y.id==x)||S.orders.find(y=>y.id==x));
+  if(!o)return;
+  const code=pixCode(o);
+  if(!code)return alert('A loja ainda não cadastrou a chave Pix.');
+  closePix();
+  const m=document.createElement('div');m.id='pixm';m.className='pixm';
+  const zap=tel()?`<a class="b s w" style="margin-top:8px" target="_blank" rel="noopener" href="https://wa.me/${waNum(tel())}?text=${encodeURIComponent('Olá! Fiz o pagamento Pix do pedido #'+o.id.slice(-4).toUpperCase()+' ('+R(o.total)+'). Segue o comprovante.')}">Enviar comprovante pelo WhatsApp</a>`:'';
+  m.innerHTML=`<div class="pixb"><h2>💠 ${fresh?'Pedido enviado! ':''}Pague com Pix</h2>
+  <p class="mu" style="margin:0">Valor do pedido</p><div class="tot" style="margin-bottom:6px">${R(o.total)}</div>
+  <div id="pixqr" class="pixqr"></div>
+  <label>Pix copia e cola</label><textarea id="pixc" readonly rows="4" onclick="this.select()">${esc(code)}</textarea>
+  <button class="b w" onclick="copyPix()">📋 Copiar código Pix</button>
+  <p class="mu">No app do seu banco, escolha <b>Pix → Pix Copia e Cola</b>, cole o código e confirme. Ou leia o QR Code acima. A loja confirma o pedido quando o pagamento chegar.</p>${zap}
+  <button class="b rd w" style="margin-top:8px" onclick="closePix()">Fechar</button></div>`;
+  document.body.appendChild(m);
+  const q=qrMatrix(code),e=$('#pixqr');
+  if(q&&e){
+    const n=q.length,mg=4;let d='';
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(q[r][c])d+=`M${c+mg} ${r+mg}h1v1h-1z`;
+    e.innerHTML=`<svg viewBox="0 0 ${n+2*mg} ${n+2*mg}" shape-rendering="crispEdges" role="img" aria-label="QR Code Pix"><rect width="100%" height="100%" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
+  }
+}
+function closePix(){const m=$('#pixm');if(m)m.remove()}
+function copyPix(){
+  const t=$('#pixc'),code=t.value,ok=()=>toastMsg('✅ Código Pix copiado!');
+  (navigator.clipboard?navigator.clipboard.writeText(code):Promise.reject()).then(ok,()=>{t.select();try{document.execCommand('copy');ok()}catch(e){toastMsg('Toque e segure no código para copiar.')}});
+}
 
 applyEmp();
 init();
