@@ -1,4 +1,4 @@
-const C='mk-v6';
+const C='mk-v7';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./','index.html','admin.html','pdv.html','manifest-loja.webmanifest','manifest.webmanifest','logo.png','icon-192.png','icon-512.png'])).catch(()=>{}));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!=C).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',e=>{

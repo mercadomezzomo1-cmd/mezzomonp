@@ -108,7 +108,7 @@ input[type=range]{padding:0;border:0;background:none}
 html[data-app=loja]{--ac:#1d4f91;--ac2:#e1ebf7;--b1:#2b6cb8;--b2:#1d4f91}
 @media(prefers-color-scheme:dark){html[data-app=loja]:not([data-theme=light]){--ac:#7fb0ee;--ac2:#1f2d40;--b1:#3b7bc9;--b2:#2a5fa6}}
 body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
-h2,.top b,.tot,.pprice,.sn,.cn{font-family:inherit}
+h2,.top b,.tot,.pprice,.sn,.cn{font-family:var(--fh,inherit)}
 button{font-family:inherit;-webkit-tap-highlight-color:transparent}
 button.b,a.b{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 20px;border:0;border-radius:12px;background:linear-gradient(180deg,var(--b1),var(--b2));color:#fff;font:700 15px inherit;font-family:inherit;letter-spacing:.2px;cursor:pointer;text-decoration:none;box-shadow:0 2px 8px #0003,inset 0 1px 0 #ffffff40;transition:transform .12s,box-shadow .12s,filter .12s}
 button.b:hover,a.b:hover{filter:brightness(1.08)}
@@ -163,6 +163,34 @@ button.b.rd,a.b.rd{background:linear-gradient(180deg,#e85a46,#c0392b);color:#fff
 <a id="wa" class="wa" hidden target="_blank" rel="noopener" aria-label="Falar no WhatsApp">💬</a>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
+const TEMAS={
+ azul:{g:'Clássicos',n:'Azul e amarelo',ac:'#1E4FD8',ach:'#1843BC',ac2:'#EEF3FF',yl:'#FFC629',yld:'#F2A900',sel:'#FFF8E1',bg:'#F6F8FB'},
+ verde:{g:'Clássicos',n:'Verde mercado',ac:'#1F7A4D',ach:'#17643E',ac2:'#EAF5EF',yl:'#F6E3A1',yld:'#D9B84A',sel:'#FDF6DD',bg:'#F5F7F6'},
+ calmo:{g:'Clássicos',n:'Azul calmo',ac:'#3C5FA8',ach:'#324F8C',ac2:'#EEF2FA',yl:'#DCE6F7',yld:'#9DB3DE',sel:'#EEF3FB',bg:'#F4F6F9'},
+ laranja:{g:'Clássicos',n:'Laranja quente',ac:'#C2541E',ach:'#A84716',ac2:'#FDF0E8',yl:'#FFD98A',yld:'#E9A93A',sel:'#FFF6E3',bg:'#F8F6F4'},
+ roxo:{g:'Clássicos',n:'Roxo',ac:'#6247B8',ach:'#523AA0',ac2:'#F1EEFB',yl:'#FFD36B',yld:'#E8B23A',sel:'#FFF8E1',bg:'#F6F5FA'},
+ vintage:{g:'Inspirados',n:'Vintage',ac:'#8B4A2B',ach:'#733B21',ac2:'#F2E3D2',yl:'#E9B949',yld:'#C8962A',sel:'#F6E7C3',bg:'#EFE6D6',card:'#FBF6EC',tx:'#3B2A1E',mu:'#7A6552',bd:'#DFCFB6',ln:'#EADFCB',ylt:'#3B2A1E',fh:'Georgia,"Palatino Linotype","Book Antiqua",serif',rad:'6px'},
+ moderno:{g:'Inspirados',n:'Moderno',ac:'#15171C',ach:'#2C3039',ac2:'#ECEDF0',yl:'#C6F432',yld:'#93B81A',sel:'#F2FAD6',bg:'#F0F1F4',card:'#FFFFFF',tx:'#15171C',mu:'#5F6570',bd:'#DFE1E6',ln:'#ECEDF0',ylt:'#15171C',fh:'Bahnschrift,"Segoe UI Variable Display","Segoe UI",sans-serif',rad:'16px'},
+ noite:{g:'Inspirados',n:'Noite (escuro)',dark:1,ac:'#4C8DFF',ach:'#3B7AEB',ac2:'#1F2B3E',yl:'#F2C14E',yld:'#D9A62E',sel:'#2B2A1F',bg:'#11151C',card:'#1A2029',tx:'#E6EAF0',mu:'#98A3B3',bd:'#2C3542',ln:'#232B36',ylt:'#1B1606'},
+ feira:{g:'Inspirados',n:'Feira',ac:'#2F8F3A',ach:'#26772F',ac2:'#E7F5E8',yl:'#FF9F2E',yld:'#E07F0A',sel:'#FFF1DF',bg:'#F6F7EF',ylt:'#2A1A05',fh:'"Segoe UI Black","Segoe UI Variable Display","Segoe UI",sans-serif'},
+ oceano:{g:'Inspirados',n:'Oceano',ac:'#0E7C86',ach:'#0B6870',ac2:'#E2F3F4',yl:'#FF8A65',yld:'#E86A43',sel:'#FFEDE7',bg:'#F1F7F8',ylt:'#2B120A'},
+ terra:{g:'Inspirados',n:'Terra',ac:'#A4442A',ach:'#8A3822',ac2:'#F6E4DC',yl:'#E6C79C',yld:'#C9A36C',sel:'#F8EBDD',bg:'#F5EFE8',card:'#FFFCF8',tx:'#2F2420',mu:'#7D6A60',bd:'#E7DACF',ln:'#F0E7DE',ylt:'#2F2420',fh:'Cambria,Georgia,serif',rad:'10px'},
+ doce:{g:'Inspirados',n:'Doce',ac:'#C2366E',ach:'#A82B5D',ac2:'#FBE6EE',yl:'#FFD3E2',yld:'#F28DB2',sel:'#FFF0F5',bg:'#FBF5F7',ylt:'#4A1328',rad:'18px'},
+ sol:{g:'Inspirados',n:'Sol',ac:'#C76A04',ach:'#AA5A03',ac2:'#FEF1DE',yl:'#FDE047',yld:'#E2B80B',sel:'#FFF8D6',bg:'#FBF8F1',ylt:'#2A2105'},
+ lavanda:{g:'Inspirados',n:'Lavanda',ac:'#7457C2',ach:'#6247AA',ac2:'#F0EBFB',yl:'#C5EEDB',yld:'#86D1AE',sel:'#EFFAF4',bg:'#F6F5FB',ylt:'#163A2A',rad:'16px'},
+ grafite:{g:'Inspirados',n:'Grafite',ac:'#3A4250',ach:'#2D3440',ac2:'#ECEEF1',yl:'#FFE066',yld:'#E6C13D',sel:'#FFF9DB',bg:'#EEF0F3',card:'#FFFFFF',tx:'#1E232B',mu:'#626B78',bd:'#D9DDE3',ln:'#E8EBEF',ylt:'#1E232B',rad:'8px'}};
+const TEMA0={card:'#FFFFFF',tx:'#1B2433',mu:'#6B778A',bd:'#E3E8EF',ln:'#EEF1F5',ylt:'#1B2433',fh:'"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif',rad:'12px'};
+/* tema escolhido pela loja (Gestão > Ajustes da loja); vazio = visual original do app */
+const TVARS=['--bg','--card','--tx','--mu','--bd','--ac','--ac2','--b1','--b2','--yl','--fh'];
+function aplTemaCat(k){
+  const st=document.documentElement.style,t=TEMAS[k];
+  if(!t){TVARS.forEach(v=>st.removeProperty(v));st.colorScheme='';return}
+  const x={...TEMA0,...t};
+  [['--bg',x.bg],['--card',x.card],['--tx',x.tx],['--mu',x.mu],['--bd',x.bd],['--ac',x.ac],['--ac2',x.ac2],['--b1',x.ac],['--b2',x.ach],['--yl',x.yl],['--fh',x.fh]].forEach(([a,b])=>st.setProperty(a,b));
+  st.colorScheme=x.dark?'dark':'light';const m=document.querySelector('meta[name=theme-color]');if(m)m.content=x.card;
+}
+try{const c0=JSON.parse(localStorage.getItem('mkcfg')||'{}');if(c0&&c0.tema)aplTemaCat(c0.tema)}catch(e){}
+
 const $=s=>document.querySelector(s);
 let S={products:[],clients:[],orders:[],cart:{},mine:[],caixa:[]};
 try{S=Object.assign(S,JSON.parse(localStorage.getItem('mk')||'{}'))}catch(e){}
@@ -635,6 +663,7 @@ async function loadCfg(){
   if(!error&&data&&data.data){EMP={...EMP0,...data.data};try{localStorage.setItem('mkcfg',JSON.stringify(EMP))}catch(e){}}
 }
 function applyEmp(){
+  aplTemaCat(EMP.tema||'');
   document.title=EMP.n+(APP=='loja'?' • Loja':'');
   const b=document.querySelector('.top b'),s=$('#sub'),h=$('#hl');
   if(b)b.textContent=EMP.n;
