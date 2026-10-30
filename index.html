@@ -154,6 +154,8 @@ button.b.rd,a.b.rd{background:linear-gradient(180deg,#e85a46,#c0392b);color:#fff
 .pixqr{display:flex;justify-content:center;margin:8px 0}
 .pixqr svg{width:min(260px,100%);height:auto;border-radius:10px;border:1px solid var(--bd)}
 .pixb textarea{font:12px/1.35 ui-monospace,Consolas,monospace;word-break:break-all}
+.g2tx{display:grid;grid-template-columns:1.6fr 1fr 46px;gap:8px;align-items:center;margin-bottom:8px}
+.g2tx input,.g2tx button{margin:0;min-height:46px}
 </style></head><body>
 <header class="top"><img id="hl" src="logo.png" alt="" onerror="this.style.display='none'"><div class="sp"><b>Mercado Mezzomo</b><small id="sub">Rua Jair Antonio Fortes, nº 626 · Novo Progresso/PA</small></div><button class="b s" id="ins" hidden style="padding:6px 10px;font-size:13px" onclick="ip.prompt()">Instalar app</button><button class="b rd" id="lo" hidden onclick="sb.auth.signOut().then(()=>location.reload())">Sair</button><button class="acc" id="acc" hidden onclick="go('eu')" aria-label="Minha conta"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg><i hidden></i></button></header>
 <main id="v"></main>
@@ -287,15 +289,16 @@ function vCart(){
 }
 setTimeout(()=>{},0);
 function trocoTxt(){const e=$('#tr');if(!e)return;const c=parseFloat(co.cash);if(!c){e.textContent='';return}
-  e.textContent=c<total()?'⚠️ O valor é menor que o total.':'Troco a levar: '+R(c-total());}
+  e.textContent=c<totalFinal()?'⚠️ O valor é menor que o total.':'Troco a levar: '+R(c-totalFinal());}
 function pick(id){co.cid=id;const c=S.clients.find(x=>x.id==id);if(c){co.addr=c.a;co.loc=c.loc||null;if(c.ref&&!co.obs)co.obs=c.ref}render();}
 function finish(){
-  const it=items(),c=S.clients.find(x=>x.id==co.cid),t=total(),cash=parseFloat(co.cash)||0;
+  const it=items(),c=S.clients.find(x=>x.id==co.cid),t=totalFinal(),cash=parseFloat(co.cash)||0;
   if(!c)return alert('Selecione o cliente.');
-  if(!co.addr.trim())return alert('Informe o endereço de entrega.');
+  if(co.ent!='retirada'&&taxaAtiva()&&taxaDe(co.bai)==null)return alert('Escolha o bairro da entrega ou selecione "Retirar na loja".');
+  if(co.ent!='retirada'&&!co.addr.trim())return alert('Informe o endereço de entrega.');
   if(co.pay=='Dinheiro'&&cash&&cash<t)return alert('O valor para troco é menor que o total.');
-  S.orders.unshift({id:uid(),date:new Date().toISOString(),cn:c.n,ph:c.t,addr:co.addr.trim(),loc:co.loc,
-    items:it.map(x=>({pid:x.p.id,n:x.p.n,u:x.p.u,p:x.p.p,q:x.qt})),total:t,pay:co.pay,cash:co.pay=='Dinheiro'?cash:0,
+  S.orders.unshift({id:uid(),date:new Date().toISOString(),cn:c.n,ph:c.t,addr:co.ent=='retirada'?'Retirada na loja':co.addr.trim(),loc:co.loc,
+    items:it.map(x=>({pid:x.p.id,n:x.p.n,u:x.p.u,p:x.p.p,q:x.qt})),total:t,sub:total(),taxa:taxaAtual(),bairro:bairroNome(),ent:co.ent||'entrega',pay:co.pay,cash:co.pay=='Dinheiro'?cash:0,
     troco:co.pay=='Dinheiro'&&cash?cash-t:0,obs:co.obs,done:false,st:'conf',canal:'balcao'});
   it.forEach(x=>{const s=stockOf(x.p);if(s!==null)x.p.est=Math.max(0,s-x.qt)});
   S.cart={};co={cid:'',addr:'',loc:null,pay:'Dinheiro',cash:'',obs:''};save();go('ped');
@@ -357,7 +360,7 @@ function vPed(){
     <div class="mu">${new Date(o.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}</div>
     <p>${o.items.map(i=>`${i.q}× ${esc(i.n)}`).join('<br>')}</p>
     <div class="mu">${esc(o.addr)}${o.loc?` · <a target="_blank" rel="noopener" href="${mapUrl(o.loc)}">ver no mapa</a>${o.loc.acc?' (±'+o.loc.acc+' m)':''}`:''}</div>
-    <div class="row" style="margin-top:8px"><span class="mu">${o.pay}${o.troco?` · levar troco ${R(o.troco)} (de ${R(o.cash)})`:''}</span><span class="tot">${R(o.total)}</span></div>
+    <div class="row" style="margin-top:8px"><span class="mu">${o.pay}${o.ent=='retirada'?' · retirada':(o.taxa?' · entrega '+R(o.taxa)+(o.bairro?' ('+esc(o.bairro)+')':''):'')}${o.troco?` · levar troco ${R(o.troco)} (de ${R(o.cash)})`:''}</span><span class="tot">${R(o.total)}</span></div>
     ${o.obs?`<div class="mu">Obs: ${esc(o.obs)}</div>`:''}
     <div class="row" style="margin-top:10px;justify-content:flex-start;flex-wrap:wrap">
     <button class="b s" onclick="printO('${o.id}')">🖨️ Imprimir</button><button class="b s" onclick="repetir('${o.id}')">🔁 Repetir</button>${o.pay=='Pix'&&EMP.pix?`<button class="b s" onclick="showPix('${o.id}')">💠 Código Pix</button>`:''}
@@ -391,7 +394,7 @@ vCart=function(){
 function mineHtml(l){
   if(!l.length)return '<div class="card"><p class="mu">Você ainda não fez pedidos.</p></div>';
   return l.map(o=>`<div class="card"><div class="row"><b>${R(o.total)}</b>${stTag(o)}</div>
-  <div class="mu">${new Date(o.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})} · ${esc(o.pay)}${o.troco?' · troco para '+R(o.cash):''}</div>
+  <div class="mu">${new Date(o.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})} · ${esc(o.pay)}${o.ent=='retirada'?' · retirada':(o.taxa?' · entrega '+R(o.taxa):'')}${o.troco?' · troco para '+R(o.cash):''}</div>
   <p>${o.items.map(i=>`${i.q}× ${esc(i.n)}`).join('<br>')}</p>${o.pay=='Pix'&&EMP.pix&&(stOf(o)=='novo'||stOf(o)=='conf')?`<button class="b ok w" style="margin-bottom:8px" onclick="showPix('${o.id}')">💠 Pagar com Pix</button>`:''}<button class="b w" onclick="repetir('${o.id}')">🔁 Repetir este pedido</button></div>`).join('');
 }
 function vMeus(){setTimeout(loadMeus,0);return '<h2>Meus pedidos</h2><div id="mp">'+mineHtml(S.mine)+'</div>';}
@@ -453,11 +456,12 @@ async function loadMe(){
 async function sair(){await sb.auth.signOut();user=null;me=null;S.mine=[];loc();go('loja')}
 async function finishC(){
   if(!user||!me){alert('Entre na sua conta e complete o cadastro para finalizar.');return go('eu')}
-  const it=items(),t=total(),cash=parseFloat(co.cash)||0;
-  if(!co.addr.trim())return alert('Informe o endereço de entrega.');
+  const it=items(),t=totalFinal(),cash=parseFloat(co.cash)||0;
+  if(co.ent!='retirada'&&taxaAtiva()&&taxaDe(co.bai)==null)return alert('Escolha o bairro da entrega ou selecione "Retirar na loja".');
+  if(co.ent!='retirada'&&!co.addr.trim())return alert('Informe o endereço de entrega.');
   if(co.pay=='Dinheiro'&&cash&&cash<t)return alert('O valor para troco é menor que o total.');
-  const o={id:rid(),cid:user.id,date:new Date().toISOString(),cn:me.n,ph:me.t,addr:co.addr.trim(),loc:co.loc||null,
-    items:it.map(x=>({pid:x.p.id,n:x.p.n,u:x.p.u,p:x.p.p,q:x.qt})),total:t,pay:co.pay,cash:co.pay=='Dinheiro'?cash:0,
+  const o={id:rid(),cid:user.id,date:new Date().toISOString(),cn:me.n,ph:me.t,addr:co.ent=='retirada'?'Retirada na loja':co.addr.trim(),loc:co.loc||null,
+    items:it.map(x=>({pid:x.p.id,n:x.p.n,u:x.p.u,p:x.p.p,q:x.qt})),total:t,sub:total(),taxa:taxaAtual(),bairro:bairroNome(),ent:co.ent||'entrega',pay:co.pay,cash:co.pay=='Dinheiro'?cash:0,
     troco:co.pay=='Dinheiro'&&cash?cash-t:0,obs:co.obs,done:false,st:'novo',canal:'app'};
   let res=await sb.rpc('criar_pedido',{p_id:o.id,p_data:o});
   if(res.error&&(res.error.code=='PGRST202'||/Could not find the function/i.test(res.error.message)))res=await sb.from('orders').insert({id:o.id,data:o});
@@ -522,7 +526,7 @@ vPed=function(){
     <div class="mu">${new Date(o.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}${o.ph?' · '+esc(o.ph):''}</div>
     <p>${o.items.map(i=>`${i.q}× ${esc(i.n)}`).join('<br>')}</p>
     <div class="mu">${esc(o.addr)}${o.loc?` · <a target="_blank" rel="noopener" href="${mapUrl(o.loc)}">ver no mapa</a>${o.loc.acc?' (±'+o.loc.acc+' m)':''}`:''}</div>
-    <div class="row" style="margin-top:8px"><span class="mu">${o.pay}${o.troco?` · levar troco ${R(o.troco)} (de ${R(o.cash)})`:''}</span><span class="tot">${R(o.total)}</span></div>
+    <div class="row" style="margin-top:8px"><span class="mu">${o.pay}${o.ent=='retirada'?' · retirada':(o.taxa?' · entrega '+R(o.taxa)+(o.bairro?' ('+esc(o.bairro)+')':''):'')}${o.troco?` · levar troco ${R(o.troco)} (de ${R(o.cash)})`:''}</span><span class="tot">${R(o.total)}</span></div>
     ${o.obs?`<div class="mu">Obs: ${esc(o.obs)}</div>`:''}
     <div class="acts2">${acts}
     <button class="b s" onclick="printO('${o.id}')">🖨️ Imprimir</button><button class="b s" onclick="repetir('${o.id}')">🔁 Repetir</button>${o.pay=='Pix'&&EMP.pix?`<button class="b s" onclick="showPix('${o.id}')">💠 Código Pix</button>`:''}
@@ -616,7 +620,7 @@ printO=function(id){
 
 /* ===== DADOS DA EMPRESA, CUPOM AJUSTÁVEL E LOGOTIPO ===== */
 const LOGO_C='data:image/png;base64,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';
-const EMP0={n:'Mercado Mezzomo',cnpj:'',e:'Rua Jair Antonio Fortes, nº 626',c:'Novo Progresso/PA',tel:'',msg:'Obrigado pela preferência!\nDeus seja louvado',logo:'',lw:40,th:165,pix:'',pixT:'cnpj'};
+const EMP0={n:'Mercado Mezzomo',cnpj:'',e:'Rua Jair Antonio Fortes, nº 626',c:'Novo Progresso/PA',tel:'',msg:'Obrigado pela preferência!\nDeus seja louvado',logo:'',lw:40,th:165,pix:'',pixT:'cnpj',taxas:[],taxaPad:''};
 let EMP={...EMP0},psc={a4:1,t80:1},autoPr=true;
 try{autoPr=localStorage.getItem('autoPr')!='0'}catch(e){}
 try{Object.assign(EMP,JSON.parse(localStorage.getItem('mkcfg')||'{}'))}catch(e){}
@@ -675,6 +679,7 @@ function cupom(o,logo){
   <hr><div class="cb2">PEDIDO #${o.id.slice(-4).toUpperCase()}</div><div class="cs">${dt}</div><hr>
   <div><b>Cliente:</b> ${esc(o.cn)}</div>${o.ph?`<div><b>Tel:</b> ${esc(o.ph)}</div>`:''}<div><b>Endereço:</b> ${esc(o.addr)}</div><hr>
   ${o.items.map(i=>`<div class="ci">${esc(i.n)}</div><div class="cr"><span>${i.q} x ${R(i.p)}</span><b>${R(i.p*i.q)}</b></div>`).join('')}<hr>
+  ${o.ent=='retirada'?'<div class="cr"><span>Retirada na loja</span><b>sem taxa</b></div>':(o.taxa>0?`<div class="cr"><span>Subtotal</span><b>${R(o.sub)}</b></div><div class="cr"><span>Taxa de entrega${o.bairro?' ('+esc(o.bairro)+')':''}</span><b>${R(o.taxa)}</b></div>`:'')}
   <div class="cr ct"><span>TOTAL</span><span>${R(o.total)}</span></div>
   <div><b>Pagamento:</b> ${esc(o.pay)}</div>
   ${o.troco?`<div><b>Troco para:</b> ${R(o.cash)}</div><div class="cbig">LEVAR TROCO: ${R(o.troco)}</div>`:''}
@@ -733,6 +738,13 @@ vCfg=function(){
   <p class="mu" style="margin-top:-4px">Quem escolher Pix recebe o código "copia e cola" e o QR Code com o valor do pedido. No banco, o pagamento aparece para ${esc(String(E.n||'').toUpperCase().slice(0,25))}.</p>
   <label>Mensagem no fim do cupom</label><textarea id="ce-m" rows="2">${esc(E.msg)}</textarea>
   <label>Logotipo</label><div class="row" style="justify-content:flex-start;align-items:flex-start"><img id="lgp" alt="" src="${E.logo||'logo.png'}" style="width:90px;height:90px;object-fit:contain;background:#fff;border-radius:10px;border:1px solid var(--bd)"><div style="flex:1"><input type="file" accept="image/*" onchange="pickLogo(this)"><button class="d" onclick="EMP.logo='';$('#lgp').src='logo.png';refPrev()">Usar logotipo padrão</button></div></div></div>
+  <div class="card"><h2>🛵 Taxa de entrega por bairro</h2>
+  <p class="mu">O cliente escolhe o bairro no carrinho, e a taxa é somada ao valor da compra e ao Pix. Sem nenhum bairro cadastrado, não há taxa.</p>
+  <div id="txl">${txHtml()}</div>
+  <button class="b s w" onclick="txAdd()">➕ Adicionar bairro</button>
+  <label style="margin-top:12px">Outros bairros (taxa padrão). Deixe vazio para não entregar fora da lista.</label>
+  <input id="ce-tp" type="number" inputmode="decimal" min="0" step="0.5" value="${EMP.taxaPad===''||EMP.taxaPad==null?'':EMP.taxaPad}" placeholder="Ex.: 10.00">
+  <button class="b w" onclick="saveEmp()">Salvar taxas</button></div>
   <div class="card"><h2>🖨️ Impressora e cupom</h2>
   <label style="display:flex;gap:10px;align-items:center;color:var(--tx);margin:4px 0 10px"><input type="checkbox" style="width:auto;margin:0" ${autoPr?'checked':''} onchange="autoPr=this.checked;try{localStorage.setItem('autoPr',this.checked?'1':'0')}catch(e){}"> Imprimir automaticamente ao confirmar o pedido</label>
   <p class="mu" style="margin:-4px 0 10px">Impressão direta, sem janela: abra o painel pelo atalho "Painel Mercado Mezzomo" criado no Windows (veja o LEIA-ME do pacote de impressão direta).</p>
@@ -764,7 +776,7 @@ async function saveEmp(){
   const g=i=>$('#'+i).value.trim();
   const pk=g('ce-pk'),pt=$('#ce-pt').value;
   if(pk&&!pixKeyNorm(pk,pt))return alert('A chave Pix não confere com o tipo escolhido. Confira o número, o e-mail ou a chave aleatória.');
-  Object.assign(EMP,{n:g('ce-n')||EMP0.n,cnpj:fmtCnpj(g('ce-cnpj')),e:g('ce-e'),c:g('ce-c'),tel:g('ce-t'),msg:$('#ce-m').value.trim(),pix:pk,pixT:pt});
+  Object.assign(EMP,{n:g('ce-n')||EMP0.n,cnpj:fmtCnpj(g('ce-cnpj')),e:g('ce-e'),c:g('ce-c'),tel:g('ce-t'),msg:$('#ce-m').value.trim(),pix:pk,pixT:pt,taxas:(EMP.taxas||[]).filter(t=>String(t.b).trim()).map(t=>({b:String(t.b).trim(),v:Math.max(0,+t.v||0)})),taxaPad:$('#ce-tp').value.trim()===''?'':Math.max(0,parseFloat($('#ce-tp').value.replace(',','.'))||0)});
   try{localStorage.setItem('mkcfg',JSON.stringify(EMP))}catch(e){}
   applyEmp();
   if(!sb)return alert('Ajustes salvos neste aparelho.');
@@ -1008,7 +1020,7 @@ function repetir(id){
     novo[p.id]=(novo[p.id]||0)+q;
   });
   if(!Object.keys(novo).length)return alert('Nenhum item deste pedido está disponível agora.');
-  S.cart=novo;
+  S.cart=novo;co.ent=o.ent||'entrega';co.bai=o.bairro==='Outros bairros'?'__outro':(o.bairro||'');
   if(!CUST){co.addr=o.addr||'';co.loc=o.loc||null;co.pay=o.pay||'Dinheiro';co.obs=o.obs||'';co.cid=(o.cid&&S.clients.some(c=>c.id==o.cid))?o.cid:''}
   save();go('cart');
   toastMsg('🔁 Itens do pedido no carrinho, com os preços de hoje.'+(falt.length?' Indisponíveis: '+falt.join(', ')+'.':'')+(ajust.length?' Quantidade ajustada ao estoque: '+ajust.join(', ')+'.':''));
@@ -1044,7 +1056,7 @@ function cxStats(){
   const dinh=ok.filter(o=>o.pay=='Dinheiro'&&(stOf(o)=='ent'||canalOf(o)=='balcao')).reduce((s,o)=>s+o.total,0);
   const ab=sm('abertura'),su=sm('suprimento'),sa=sm('sangria'),de=sm('despesa');
   return {a,b,os,ok,pay,dias,movs,ab,su,sa,de,dinh,gav:ab+su+dinh-sa-de,
-    fat:ok.reduce((s,o)=>s+o.total,0),itens:ok.reduce((s,o)=>s+(o.items||[]).reduce((x,i)=>x+i.q,0),0),
+    tx:ok.reduce((s,o)=>s+(o.taxa||0),0),fat:ok.reduce((s,o)=>s+o.total,0),itens:ok.reduce((s,o)=>s+(o.items||[]).reduce((x,i)=>x+i.q,0),0),
     top:Object.values(top).sort((x,y)=>y.q-x.q).slice(0,10),
     ent:app.filter(o=>stOf(o)=='ent').length,pend:app.filter(o=>stOf(o)=='novo'||stOf(o)=='conf').length,
     canc:os.filter(o=>stOf(o)=='canc')};
@@ -1060,7 +1072,7 @@ vCaixa=function(){
   ${cxP=='per'?`<div class="g2"><div><label>De</label><input type="date" value="${cxA}" onchange="cxA=this.value;render()"></div><div><label>Até</label><input type="date" value="${cxB}" onchange="cxB=this.value;render()"></div></div>`:''}
   <p class="mu" style="margin:0 0 8px">${fdt(c.a)}${+c.b-+c.a>864e5?' a '+fdt(+c.b-1):''} · conta pedidos confirmados e entregues</p>
   <div class="kpi">
-    <div class="card"><small>Vendas (faturamento)</small><b>${R(c.fat)}</b></div>
+    <div class="card"><small>Vendas (faturamento)</small><b>${R(c.fat)}</b>${c.tx?`<small>inclui ${R(c.tx)} de taxas de entrega</small>`:''}</div>
     <div class="card"><small>Pedidos</small><b>${n}</b></div>
     <div class="card"><small>Ticket médio</small><b>${R(n?c.fat/n:0)}</b></div>
     <div class="card"><small>Produtos vendidos</small><b>${c.itens}</b></div>
@@ -1094,7 +1106,7 @@ function printFech(){
   const c=cxStats(),L=(t,v)=>`<div class="cr"><span>${t}</span><b>${v}</b></div>`;
   const html=`<div class="cp"><div class="cn">${esc(EMP.n.toUpperCase())}</div><div class="cb2" style="font-size:1.2em">FECHAMENTO DE CAIXA</div>
   <div class="cs">${fdt(c.a)}${+c.b-+c.a>864e5?' a '+fdt(+c.b-1):''}</div><hr>
-  ${L('Vendas',R(c.fat))}${L('Pedidos',c.ok.length)}${L('Produtos vendidos',c.itens)}${L('Entregas feitas',c.ent)}${L('Entregas pendentes',c.pend)}<hr>
+  ${L('Vendas',R(c.fat))}${c.tx?L('(inclui taxas de entrega)',R(c.tx)):''}${L('Pedidos',c.ok.length)}${L('Produtos vendidos',c.itens)}${L('Entregas feitas',c.ent)}${L('Entregas pendentes',c.pend)}<hr>
   ${Object.entries(c.pay).map(([k,v])=>L(esc(k)+' ('+v.n+')',R(v.v))).join('')}<hr>
   ${L('Abertura',R(c.ab))}${L('+ Suprimentos',R(c.su))}${L('+ Vendas em dinheiro',R(c.dinh))}${L('- Sangrias',R(c.sa))}${L('- Despesas',R(c.de))}
   <div class="cr ct"><span>NA GAVETA</span><span>${R(c.gav)}</span></div><hr>
@@ -1292,6 +1304,46 @@ function copyPix(){
   const t=$('#pixc'),code=t.value,ok=()=>toastMsg('✅ Código Pix copiado!');
   (navigator.clipboard?navigator.clipboard.writeText(code):Promise.reject()).then(ok,()=>{t.select();try{document.execCommand('copy');ok()}catch(e){toastMsg('Toque e segure no código para copiar.')}});
 }
+
+/* ===== TAXA DE ENTREGA POR BAIRRO ===== */
+const bkey=s=>ascii(String(s||'')).toUpperCase().replace(/[^A-Z0-9 ]/g,'').replace(/\s+/g,' ').trim();
+const padOn=()=>EMP.taxaPad!==''&&EMP.taxaPad!=null&&!isNaN(+EMP.taxaPad);
+const taxaAtiva=()=>(EMP.taxas||[]).length>0||padOn();
+function taxaDe(b){
+  if(b==='__outro')return padOn()?+EMP.taxaPad:null;
+  if(!b)return null;
+  const t=(EMP.taxas||[]).find(x=>bkey(x.b)==bkey(b));
+  return t?+t.v:null;
+}
+function taxaAtual(){
+  if(!taxaAtiva()||co.ent=='retirada')return 0;
+  const t=taxaDe(co.bai);return t==null?0:Math.round(t*100)/100;
+}
+const totalFinal=()=>Math.round((total()+taxaAtual())*100)/100;
+const bairroNome=()=>co.ent=='retirada'||!taxaAtiva()?'':(co.bai==='__outro'?'Outros bairros':(co.bai||''));
+const _vc3=vCart;
+vCart=function(){
+  let h=_vc3();
+  if(!items().length||!taxaAtiva())return h;
+  if(!co.bai&&co.ent!='retirada'){
+    const src=CUST?me:S.clients.find(c=>c.id==co.cid);
+    if(src&&src.bai){const m=(EMP.taxas||[]).find(x=>bkey(x.b)==bkey(src.bai));if(m)co.bai=m.b;else if(padOn())co.bai='__outro'}
+  }
+  const ent=co.ent=='retirada'?'retirada':'entrega',tx=taxaDe(co.bai);
+  const opts=(EMP.taxas||[]).slice().sort((a,b)=>a.b.localeCompare(b.b,'pt-BR')).map(t=>`<option value="${esc(t.b)}" ${co.bai===t.b?'selected':''}>${esc(t.b)} — ${R(t.v)}</option>`).join('')
+    +(padOn()?`<option value="__outro" ${co.bai==='__outro'?'selected':''}>Outros bairros — ${R(+EMP.taxaPad)}</option>`:'');
+  const blk=`<label>Como você quer receber?</label><div class="g2" style="margin-bottom:8px"><button class="b ${ent=='entrega'?'':'s'}" onclick="co.ent='entrega';render()">🛵 Entrega</button><button class="b ${ent=='retirada'?'':'s'}" onclick="co.ent='retirada';render()">🏪 Retirar na loja</button></div>`
+    +(ent=='entrega'?`<label>Bairro da entrega</label><select onchange="co.bai=this.value;render()"><option value="">Selecione o bairro</option>${opts}</select>${co.bai&&tx==null?'<p class="mu">Não entregamos neste bairro.</p>':''}`:'<p class="mu">Sem taxa. Retire o pedido na loja.</p>');
+  h=h.replace('<label>Endereço de entrega</label>',blk+'<label>Endereço de entrega</label>');
+  h=h.replace('<span>Total</span><span class="tot">'+R(total())+'</span>','<span>Subtotal</span><span>'+R(total())+'</span></div><div class="row"><span>Taxa de entrega</span><span>'+(ent=='retirada'?'sem taxa':(tx==null?'escolha o bairro':R(taxaAtual())))+'</span></div><div class="row"><span>Total</span><span class="tot">'+R(totalFinal())+'</span>');
+  setTimeout(trocoTxt,0);
+  return h;
+};
+function txHtml(){
+  return (EMP.taxas||[]).map((t,i)=>`<div class="g2tx"><input value="${esc(t.b)}" placeholder="Nome do bairro" oninput="EMP.taxas[${i}].b=this.value"><input type="number" inputmode="decimal" min="0" step="0.5" value="${t.v}" placeholder="R$" oninput="EMP.taxas[${i}].v=parseFloat(this.value)||0"><button class="b rd" style="padding:0" onclick="txDel(${i})" aria-label="Remover bairro">✕</button></div>`).join('')||'<p class="mu">Nenhum bairro cadastrado: a entrega não tem taxa.</p>';
+}
+function txAdd(){EMP.taxas=EMP.taxas||[];EMP.taxas.push({b:'',v:0});$('#txl').innerHTML=txHtml()}
+function txDel(i){EMP.taxas.splice(i,1);$('#txl').innerHTML=txHtml()}
 
 applyEmp();
 init();
