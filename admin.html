@@ -462,17 +462,17 @@ async function finishC(){
   if(co.ent!='retirada'&&taxaAtiva()&&taxaDe(co.bai)==null)return alert('Escolha o bairro da entrega ou selecione "Retirar na loja".');
   if(co.ent!='retirada'&&!co.addr.trim())return alert('Informe o endereço de entrega.');
   if(co.pay=='Dinheiro'&&cash&&cash<t)return alert('O valor para troco é menor que o total.');
-  const o={id:rid(),cid:user.id,date:new Date().toISOString(),cn:me.n,ph:me.t,addr:co.ent=='retirada'?'Retirada na loja':co.addr.trim(),loc:co.loc||null,
+  let o={id:rid(),cid:user.id,date:new Date().toISOString(),cn:me.n,ph:me.t,addr:co.ent=='retirada'?'Retirada na loja':co.addr.trim(),loc:co.loc||null,
     items:it.map(x=>({pid:x.p.id,n:x.p.n,u:x.p.u,p:x.p.p,q:x.qt})),total:t,sub:total(),taxa:taxaAtual(),bairro:bairroNome(),ent:co.ent||'entrega',pay:co.pay,cash:co.pay=='Dinheiro'?cash:0,
     troco:co.pay=='Dinheiro'&&cash?cash-t:0,obs:co.obs,done:false,st:'novo',canal:'app'};
-  let res=await sb.rpc('criar_pedido',{p_id:o.id,p_data:o});
-  if(res.error&&(res.error.code=='PGRST202'||/Could not find the function/i.test(res.error.message)))res=await sb.from('orders').insert({id:o.id,data:o});
+  const res=await sb.rpc('criar_pedido',{p_id:o.id,p_data:o});
   const error=res.error;
   if(error){
     const m=/ESTOQUE:(.*)/.exec(error.message);
     if(m){await loadProducts();render();return alert('O produto "'+m[1].trim()+'" não tem estoque suficiente. Ajuste o carrinho.')}
     return alert('Não foi possível enviar o pedido: '+error.message);
   }
+  if(res.data&&res.data.id){if(Math.abs(res.data.total-o.total)>0.009)alert('Alguns preços mudaram. Total atualizado: '+R(res.data.total));o=res.data}
   S.mine.unshift(o);loadProducts();S.cart={};co={cid:'',addr:'',loc:null,pay:'Dinheiro',cash:'',obs:''};save();
   if(o.pay=='Pix'&&EMP.pix){go('meus');showPix(o,true)}else{alert('Pedido enviado! A loja vai entrar em contato.');go('meus')}
 }
@@ -524,7 +524,7 @@ vPed=function(){
     const k=stOf(o),msg=`Pedido de ${o.cn}\n`+o.items.map(i=>`${i.q}x ${i.n} - ${R(i.p*i.q)}`).join('\n')+`\nTotal: ${R(o.total)}\nPagamento: ${o.pay}`+(o.troco?` (troco para ${R(o.cash)}: levar ${R(o.troco)})`:'')+`\nEndereço: ${o.addr}`+(o.loc?`\nLocalização: ${mapUrl(o.loc)}`:'')+(o.obs?`\nObs: ${o.obs}`:'')+(o.pay=='Pix'&&EMP.pix?`\n\nPix copia e cola:\n${pixCode(o)}`:'');
     const ph=digits(o.ph||''),B=(t,s,c)=>`<button class="b ${c||''}" onclick="setSt('${o.id}','${s}')">${t}</button>`;
     const acts=k=='novo'?B(autoPr?'✔ Confirmar e imprimir':'✔ Confirmar pedido','conf','ok')+B('Cancelar','canc','s dg'):k=='conf'?B('Marcar entregue','ent','ok')+B('Cancelar','canc','s dg'):B('Reabrir','conf','s');
-    return `<div class="card ord" id="o-${o.id}" data-st="${k}"><div class="row"><b>${esc(o.cn)} <span class="mu">#${o.id.slice(-4).toUpperCase()}</span></b>${stTag(o)}</div>
+    return `<div class="card ord" id="o-${o.id}" data-st="${k}"><div class="row"><b>${esc(o.cn)} <span class="mu">#${o.id.slice(-4).toUpperCase()}</span></b><span>${o.fat?'<span class="tag ok" style="margin-right:4px">Faturado</span>':''}${stTag(o)}</span></div>
     <div class="mu">${new Date(o.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}${o.ph?' · '+esc(o.ph):''}</div>
     <p>${o.items.map(i=>`${i.q}× ${esc(i.n)}`).join('<br>')}</p>
     <div class="mu">${esc(o.addr)}${o.loc?` · <a target="_blank" rel="noopener" href="${mapUrl(o.loc)}">ver no mapa</a>${o.loc.acc?' (±'+o.loc.acc+' m)':''}`:''}</div>
@@ -1048,14 +1048,14 @@ function cxStats(){
   const os=S.orders.filter(o=>inR(o.date)),ok=os.filter(o=>stOf(o)=='conf'||stOf(o)=='ent');
   const pay={},top={},dias={};
   ok.forEach(o=>{
-    const p=o.pay||'Outro';pay[p]=pay[p]||{n:0,v:0};pay[p].n++;pay[p].v+=o.total;
+    (o.pags&&o.pags.length?o.pags:[{f:o.pay||'Outro',v:o.total}]).forEach(g=>{pay[g.f]=pay[g.f]||{n:0,v:0};pay[g.f].n++;pay[g.f].v+=+g.v||0});
     (o.items||[]).forEach(i=>{const k=i.pid||i.n;top[k]=top[k]||{n:i.n,q:0,v:0};top[k].q+=i.q;top[k].v+=i.p*i.q});
     const k=dayKey(o.date);dias[k]=(dias[k]||0)+o.total;
   });
   const app=os.filter(o=>canalOf(o)=='app');
   const movs=S.caixa.filter(m=>inR(m.date)).sort((x,y)=>String(y.date).localeCompare(String(x.date)));
   const sm=t=>movs.filter(m=>m.tipo==t).reduce((s,m)=>s+m.valor,0);
-  const dinh=ok.filter(o=>o.pay=='Dinheiro'&&(stOf(o)=='ent'||canalOf(o)=='balcao')).reduce((s,o)=>s+o.total,0);
+  const dinh=ok.reduce((s,o)=>s+(o.pags&&o.pags.length?o.pags.filter(g=>g.f=='Dinheiro').reduce((x,g)=>x+(+g.v||0),0):(o.pay=='Dinheiro'&&(stOf(o)=='ent'||canalOf(o)=='balcao')?o.total:0)),0);
   const ab=sm('abertura'),su=sm('suprimento'),sa=sm('sangria'),de=sm('despesa');
   return {a,b,os,ok,pay,dias,movs,ab,su,sa,de,dinh,gav:ab+su+dinh-sa-de,
     tx:ok.reduce((s,o)=>s+(o.taxa||0),0),fat:ok.reduce((s,o)=>s+o.total,0),itens:ok.reduce((s,o)=>s+(o.items||[]).reduce((x,i)=>x+i.q,0),0),
@@ -1070,7 +1070,7 @@ vCaixa=function(){
   const rw=(t,v,s)=>`<div class="cx-row"${s?` style="${s}"`:''}><span>${t}</span><b>${v}</b></div>`;
   const dk=Object.keys(c.dias).sort(),dm=Math.max(1,...Object.values(c.dias));
   const baixo=S.products.filter(p=>{const s=stockOf(p);return s!==null&&s>0&&s<=5}).length,esg=S.products.filter(soldOut).length;
-  return `<div class="fl">${P.map(([k,t])=>`<button class="${cxP==k?'on':''}" onclick="cxP='${k}';render()">${t}</button>`).join('')}</div>
+  return `<a class="b w" style="margin-bottom:10px;width:100%" href="pdv.html" target="_blank">🧾 Abrir PDV do balcão</a><div class="fl">${P.map(([k,t])=>`<button class="${cxP==k?'on':''}" onclick="cxP='${k}';render()">${t}</button>`).join('')}</div>
   ${cxP=='per'?`<div class="g2"><div><label>De</label><input type="date" value="${cxA}" onchange="cxA=this.value;render()"></div><div><label>Até</label><input type="date" value="${cxB}" onchange="cxB=this.value;render()"></div></div>`:''}
   <p class="mu" style="margin:0 0 8px">${fdt(c.a)}${+c.b-+c.a>864e5?' a '+fdt(+c.b-1):''} · conta pedidos confirmados e entregues</p>
   <div class="kpi">
