@@ -132,12 +132,17 @@ tbody tr{cursor:pointer}
 }
 </style></head><body>
 <div id="root"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 /* ===== CONFIGURAÇÃO (mesmo projeto do app) ===== */
 const SB_URL='https://jfhyyizuziyxumtiebdn.supabase.co', SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmaHl5aXp1eml5eHVtdGllYmRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxMDY0NDAsImV4cCI6MjEwNzY4MjQ0MH0.-PCi3sXeLUeMh5RAPpLcNDLcbgCVRcntZB2IwHeDSvM';
 const FAKE='@mercadomezzomo1-cmd.github.io';
-const sb=window.supabase?window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}}):null;
+let sb=null; /* biblioteca do Supabase: só é carregada no modo online (sem servidor local) */
+async function ensureSb(){
+  if(sb)return sb;
+  if(!window.supabase)await new Promise(ok=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js';s.onload=ok;s.onerror=ok;document.head.appendChild(s);setTimeout(ok,15000)});
+  if(window.supabase)sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
+  return sb;
+}
 
 /* ===== utilidades ===== */
 const $=s=>document.querySelector(s);
@@ -193,54 +198,88 @@ const opName=()=>C.op||(user&&user.email?user.email.split('@')[0]:'');
 /* ===== login ===== */
 function loginView(msg){
   $('#root').innerHTML=`<div class="card login"><img src="${esc(EMP.logo||'logo.png')}" alt="" onerror="this.style.display='none'"><h2 style="margin:8px 0 2px">PDV do balcão</h2><p class="mu" style="color:var(--mu);margin:0 0 10px">${esc(EMP.n)}</p>
-  ${msg?`<p style="color:var(--rd);font-weight:700">${esc(msg)}</p>`:''}
+  ${msg?`<p style="color:var(--rd);font-weight:700">${esc(msg)}</p>`:''}${LOCAL?'<p class="mu" style="color:var(--mu);font-size:13px">Servidor local do caixa. O primeiro acesso precisa de internet; depois o PDV funciona sem ela.</p>':''}
   <label>E-mail ou WhatsApp</label><input id="le" autocomplete="username" autofocus>
   <label>Senha</label><input id="lp" type="password" autocomplete="current-password" onkeydown="if(event.key=='Enter')login()">
   <button class="b" style="width:100%;margin-top:14px" onclick="login()">Entrar</button></div>`;
   setTimeout(()=>$('#le')&&$('#le').focus(),50);
 }
 async function login(){
-  if(!sb)return toast('Sem conexão com o servidor.','er');
-  const v=$('#le').value,{error}=await sb.auth.signInWithPassword({email:authEmail(v)||v.trim(),password:$('#lp').value});
-  if(error)return loginView('E-mail/WhatsApp ou senha incorretos.');
+  const v=$('#le').value,err=await API.login(authEmail(v)||v.trim(),$('#lp').value);
+  if(err)return loginView(err);
   init();
 }
-async function sair(){if(cart.length&&!confirm('Há uma venda em andamento. Sair mesmo assim?'))return;await sb.auth.signOut();localStorage.removeItem('pdvadm');location.reload()}
+async function sair(){
+  if(cart.length&&!confirm('Há uma venda em andamento. Sair mesmo assim?'))return;
+  try{await API.logout()}catch(e){return alert(e.message)}
+  localStorage.removeItem('pdvadm');location.reload();
+}
+
+/* ===== camada de dados: servidor local do caixa OU nuvem (Supabase) ===== */
+let LOCAL=false,LS=null;
+const L={
+  async get(p){const r=await fetch(p,{cache:'no-store'});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'HTTP '+r.status);return j},
+  async post(p,b){const r=await fetch(p,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b||{})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'HTTP '+r.status);return j}
+};
+async function detectLocal(){try{const r=await fetch('/api/status',{cache:'no-store'});if(r.ok){const j=await r.json();if(j&&j.local){LOCAL=true;LS=j;return j}}}catch(e){}return null}
+const API={
+  async login(email,password){
+    if(LOCAL){try{LS=await L.post('/api/login',{email,password});return ''}catch(e){return e.message}}
+    if(!await ensureSb())return 'Sem conexão com o servidor.';
+    const {error}=await sb.auth.signInWithPassword({email,password});return error?'E-mail/WhatsApp ou senha incorretos.':'';
+  },
+  async logout(){if(LOCAL)return L.post('/api/logout');await sb.auth.signOut()},
+  async products(){if(LOCAL)return L.get('/api/products');const {data,error}=await sb.from('products').select('data');if(error)throw error;return data.map(r=>r.data).filter(Boolean)},
+  async cfg(){if(LOCAL)return L.get('/api/config');const {data,error}=await sb.from('config').select('data').eq('id','empresa').maybeSingle();if(error)throw error;return data&&data.data},
+  async orders(){if(LOCAL)return L.get('/api/pend');const {data,error}=await sb.from('orders').select('data').gte('updated_at',new Date(Date.now()-20*864e5).toISOString());if(error)throw error;return data.map(r=>r.data)},
+  async faturar(id,data){
+    if(LOCAL){try{await L.post('/api/faturar',{id,data});pollStatus();return {}}catch(e){return {error:e}}}
+    try{return await sb.rpc('pdv_faturar',{p_id:id,p_data:data})}catch(e){return {error:e}}
+  },
+  async dia(){
+    if(LOCAL)return L.get('/api/dia');
+    const iso=hoje0().toISOString(),[a,b]=await Promise.all([sb.from('caixa').select('data').gte('updated_at',iso),sb.from('orders').select('data').gte('updated_at',iso)]);
+    if(a.error||b.error)throw (a.error||b.error);return {mv:a.data.map(r=>r.data),os:b.data.map(r=>r.data)};
+  },
+  async mov(m){if(LOCAL){await L.post('/api/caixa',m);pollStatus();return}const {error}=await sb.from('caixa').insert({id:m.id,data:m,updated_at:m.date});if(error)throw error},
+  async clients(){if(LOCAL)return L.get('/api/clients');const {data}=await sb.from('clients').select('data');return (data||[]).map(r=>r.data).filter(Boolean)}
+};
+async function pollStatus(){if(!LOCAL)return;try{LS=await L.get('/api/status')}catch(e){LS=null}hdr()}
 
 /* ===== carregar dados ===== */
 async function loadProducts(){
-  if(!sb)return;
-  const {data,error}=await sb.from('products').select('data');
-  if(!error&&data){P=data.map(r=>r.data).filter(Boolean);store('pdvprod',P);setOnline(true)}else if(error&&isNet(error))setOnline(false);
+  try{P=await API.products();store('pdvprod',P);if(!LOCAL)setOnline(true)}catch(e){if(!LOCAL&&isNet(e))setOnline(false)}
 }
-async function loadCfg(){
-  const {data,error}=await sb.from('config').select('data').eq('id','empresa').maybeSingle();
-  if(!error&&data&&data.data){EMP={...EMP,...data.data};store('mkcfg',EMP)}
-}
+async function loadCfg(){try{const d=await API.cfg();if(d){EMP={...EMP,...d};store('mkcfg',EMP)}}catch(e){}}
 async function loadPend(){
-  if(!sb||!user)return;
-  const since=new Date(Date.now()-20*864e5).toISOString();
-  const {data,error}=await sb.from('orders').select('data').gte('updated_at',since);
-  if(error)return;
-  pend=data.map(r=>r.data).filter(o=>o&&!o.fat&&(o.st=='novo'||o.st=='conf'||(!o.st&&!o.done))&&o.canal!='balcao').sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  if(!user)return;let l;try{l=await API.orders()}catch(e){return}
+  pend=l.filter(o=>o&&!o.fat&&(o.st=='novo'||o.st=='conf'||(!o.st&&!o.done))&&o.canal!='balcao').sort((a,b)=>String(a.date).localeCompare(String(b.date)));
   side();
 }
 async function init(){
-  if(!sb){$('#root').innerHTML='<div class="card login"><h3>Sem conexão</h3><p>Abra o PDV com internet pela primeira vez.</p></div>';return}
-  let ses=null;try{ses=(await sb.auth.getSession()).data.session}catch(e){}
-  if(!ses)return loginView();
-  let ok=false;
-  const {data,error}=await sb.rpc('sou_admin');
-  if(error){ok=isNet(error)&&load('pdvadm','')==ses.user.id;if(!ok)return loginView('Não foi possível conferir sua conta. Verifique a internet.')}
-  else ok=!!data;
-  if(!ok){await sb.auth.signOut();return loginView('Essa conta não é administradora da loja.')}
-  store('pdvadm',ses.user.id);user=ses.user;
+  const st=await detectLocal();
+  if(LOCAL){
+    if(st.needLogin||!st.user)return loginView(st.lastErr&&!/internet/i.test(st.lastErr)?st.lastErr:'');
+    user=st.user;
+  }else{
+    await ensureSb();
+    if(!sb){$('#root').innerHTML='<div class="card login"><h3>Sem conexão</h3><p>Abra o PDV com internet pela primeira vez.</p></div>';return}
+    let ses=null;try{ses=(await sb.auth.getSession()).data.session}catch(e){}
+    if(!ses)return loginView();
+    let ok=false;
+    const {data,error}=await sb.rpc('sou_admin');
+    if(error){ok=isNet(error)&&load('pdvadm','')==ses.user.id;if(!ok)return loginView('Não foi possível conferir sua conta. Verifique a internet.')}
+    else ok=!!data;
+    if(!ok){await sb.auth.signOut();return loginView('Essa conta não é administradora da loja.')}
+    store('pdvadm',ses.user.id);user=ses.user;
+  }
   shell();render();
   await Promise.all([loadCfg(),loadProducts()]);shell();render();
   loadPend();flushQ();checkAbertura();
-  setInterval(()=>{if(!M&&!busy)loadProducts()},60000);
-  setInterval(loadPend,20000);
+  setInterval(()=>{if(!M&&!busy)loadProducts()},LOCAL?20000:60000);
+  setInterval(loadPend,LOCAL?10000:20000);
   setInterval(flushQ,15000);
+  if(LOCAL)setInterval(pollStatus,5000);
 }
 addEventListener('online',()=>{setOnline(true);flushQ()});
 addEventListener('offline',()=>setOnline(false));
@@ -250,7 +289,7 @@ function setOnline(v){online=v;hdr()}
 function shell(){
   $('#root').innerHTML=`<header class="hd"><img src="${esc(EMP.logo||'logo.png')}" alt="" onerror="this.style.display='none'"><div class="nm">${esc(EMP.n)}<small>PDV · <span id="pdvn">${esc(C.pdv)}</span> · ${esc(opName())}</small></div><div class="sp"></div>
   <span id="net" class="chip"></span><span id="fila" class="chip wn" hidden></span><span class="clock hide-s num" id="clk"></span>
-  <button class="ib" title="Ajustes do caixa" onclick="cfgM()">⚙️</button><button class="ib" title="Abrir painel da loja" onclick="window.open('admin.html','_blank')">🏪</button><button class="ib" title="Sair" onclick="sair()">⎋</button></header>
+  <button class="ib" title="Ajustes do caixa" onclick="cfgM()">⚙️</button><button class="ib" title="Abrir painel da loja" onclick="window.open(LOCAL?(EMP.painel||'admin.html'):'admin.html','_blank')">🏪</button><button class="ib" title="Sair" onclick="sair()">⎋</button></header>
   <main class="pdv">
    <section class="lf">
     <div class="scan"><span class="ico">🔎</span><input id="in" autocomplete="off" spellcheck="false" placeholder="Código de barras, código ou nome do produto" oninput="sug()"><span class="mt" id="mt" hidden></span><div class="sg" id="sg" hidden></div></div>
@@ -280,9 +319,20 @@ function shell(){
 }
 function hdr(){
   const n=$('#net');if(!n)return;
-  n.className='chip'+(online?'':' off');n.innerHTML=`<i></i>${online?'Online':'Sem internet'}`;
-  const f=$('#fila');f.hidden=!(Q.length||QE.length);f.textContent=Q.length?`⏳ ${Q.length} venda(s) na fila`:`⚠️ ${QE.length} venda(s) com erro`;
-  f.onclick=caixaM;
+  const f=$('#fila');let fl='',fk='wn';
+  if(LOCAL){
+    const ls=LS;
+    if(!ls){n.className='chip off';n.innerHTML='<i></i>Servidor local parado'}
+    else{
+      const hh=ls.lastSync?new Date(ls.lastSync).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'nunca';
+      n.className='chip'+(ls.online?'':' off');n.innerHTML=`<i></i>${ls.online?'Online':'Sem internet'} · sinc. ${hh}`;
+      n.title=ls.lastErr||'';
+      if(ls.errs&&ls.errs.length){fl=`⚠️ ${ls.errs.length} recusado(s)`;fk='off'}
+      else if(ls.outbox)fl=`⏳ ${ls.outbox} a enviar`;
+    }
+  }else{n.className='chip'+(online?'':' off');n.innerHTML=`<i></i>${online?'Online':'Sem internet'}`}
+  if(Q.length)fl=(fl?fl+' · ':'')+`${Q.length} na fila do navegador`;else if(QE.length)fl=(fl?fl+' · ':'')+`⚠️ ${QE.length} com erro`;
+  f.hidden=!fl;f.textContent=fl;f.className='chip '+fk;f.onclick=caixaM;
 }
 function tick(){const c=$('#clk');if(c)c.textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
 setInterval(tick,15000);
@@ -464,7 +514,7 @@ async function cliM(){
   if(ord)return;
   const cs=$('#cs');
   cs.oninput=async()=>{
-    if(!clients){const {data}=await sb.from('clients').select('data');clients=(data||[]).map(r=>r.data).filter(Boolean)}
+    if(!clients){try{clients=await API.clients()}catch(e){clients=[]}}
     const t=norm(cs.value),d=digits(cs.value);
     const l=t.length<2?[]:clients.filter(x=>norm(x.n).includes(t)||(d.length>=4&&digits(x.t).includes(d))).slice(0,6);
     $('#csl').innerHTML=l.map(x=>`<div class="row" style="cursor:pointer" onclick='pickCli(${JSON.stringify({id:x.id,n:x.n,ph:x.t||""}).replace(/'/g,"&#39;")})'><span><b>${esc(x.n)}</b><br><small style="color:var(--mu)">${esc(fmtTel(x.t))} · ${esc(x.a||'')}</small></span><span>›</span></div>`).join('');
@@ -546,7 +596,7 @@ async function faturar(){
     const id=ord?ord.id:uid();
     const base=ord?{}:{date:now,cn:cli&&cli.n?cli.n:'Consumidor',ph:cli?cli.ph||'':'',addr:'Venda no balcão',ent:'retirada',bairro:'',canal:'balcao',obs:'',...(cli&&cli.id?{cli_id:cli.id}:{})};
     const data={...base,items,sub:sub(),desc:descV(),taxa:taxa(),total:total(),pags,pay:forms.length==1?forms[0]:'Misto',cash,troco,st,done:st=='ent',fat,...(cli&&cli.cpf?{cpf:digits(cli.cpf)}:{})};
-    let res;try{res=await sb.rpc('pdv_faturar',{p_id:id,p_data:data})}catch(e){res={error:e}}
+    const res=await API.faturar(id,data);
     let off=false;
     if(res.error){
       if(isNet(res.error)){Q.push({id,data});saveQ();setOnline(false);off=true}
@@ -574,10 +624,10 @@ function doneM(o,off){
 
 /* ===== fila offline ===== */
 async function flushQ(){
-  if(!Q.length||flushing||!sb)return;flushing=true;
+  if(!Q.length||flushing||(!LOCAL&&!sb))return;flushing=true;
   try{
     for(const it of [...Q]){
-      let r;try{r=await sb.rpc('pdv_faturar',{p_id:it.id,p_data:it.data})}catch(e){r={error:e}}
+      const r=await API.faturar(it.id,it.data);
       if(r.error){
         if(isNet(r.error)){setOnline(false);break}
         it.err=String(r.error.message||r.error);QE.push(it);toast('⚠️ Venda #'+it.id.slice(-4).toUpperCase()+' não foi aceita: '+it.err,'er');
@@ -591,11 +641,9 @@ async function flushQ(){
 const TIPO={abertura:'Abertura (fundo de troco)',suprimento:'Suprimento',sangria:'Sangria',despesa:'Despesa'};
 const hoje0=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
 async function caixaDia(){
-  const t0=hoje0(),iso=t0.toISOString();
-  const [a,b]=await Promise.all([sb.from('caixa').select('data').gte('updated_at',iso),sb.from('orders').select('data').gte('updated_at',iso)]);
-  if(a.error||b.error)throw (a.error||b.error);
-  const mv=a.data.map(r=>r.data).filter(m=>m&&new Date(m.date)>=t0).sort((x,y)=>String(x.date).localeCompare(String(y.date)));
-  const os=b.data.map(r=>r.data).filter(o=>o&&o.fat&&new Date(o.fat.date)>=t0);
+  const t0=hoje0(),d=await API.dia();
+  const mv=d.mv.filter(m=>m&&new Date(m.date)>=t0).sort((x,y)=>String(x.date).localeCompare(String(y.date)));
+  const os=d.os.filter(o=>o&&o.fat&&new Date(o.fat.date)>=t0);
   const pay={};let din=0,fat=0;
   os.forEach(o=>{fat+=+o.total||0;(o.pags||[]).forEach(g=>{pay[g.f]=pay[g.f]||{n:0,v:0};pay[g.f].n++;pay[g.f].v+=+g.v||0;if(g.f=='Dinheiro')din+=+g.v||0})});
   const sm=t=>mv.filter(m=>m.tipo==t).reduce((s,m)=>s+(+m.valor||0),0);
@@ -625,7 +673,9 @@ async function caixaM(){
    </div></div>
   ${Q.length?`<p style="color:var(--wn);font-weight:700">⏳ ${Q.length} venda(s) deste computador ainda não foram enviadas (sem internet). Não entram no resumo até serem enviadas.</p>`:''}
   ${QE.length?`<p style="color:var(--rd);font-weight:700">⚠️ ${QE.length} venda(s) recusadas pelo servidor:</p>${QE.map((x,i)=>`<div class="row"><span>#${esc(x.id.slice(-4).toUpperCase())} · ${R(x.data.total)} · ${esc(x.err)}</span><span><button class="b s" style="min-height:32px" onclick="Q.push(QE.splice(${i},1)[0]);saveQ();flushQ().then(caixaM)">Tentar de novo</button> <button class="b gh" style="min-height:32px" onclick="if(confirm('Descartar esta venda da fila?')){QE.splice(${i},1);saveQ();hdr();caixaM()}">Descartar</button></span></div>`).join('')}`:''}
-  <div class="mb"><button class="b s" onclick="printFech()">🖨️ Imprimir resumo</button><button class="b s" onclick="closeM()"><kbd>Esc</kbd> Fechar</button></div>`;
+  ${LOCAL&&LS&&LS.outbox?`<p style="color:var(--wn);font-weight:700">⏳ ${LS.outbox} lançamento(s) guardados neste computador aguardando internet para subir ao sistema. Já contam no resumo acima.</p>`:''}
+  ${LOCAL&&LS&&LS.errs&&LS.errs.length?`<p style="color:var(--rd);font-weight:700">⚠️ Recusados pelo sistema online (ficaram só neste computador):</p>${LS.errs.map(x=>`<div class="row"><span>${x.kind=='faturar'?'Venda':'Caixa'} #${esc(String(x.ref).slice(-4).toUpperCase())} · ${R(x.total)} · ${esc(x.err)}</span><span><button class="b s" style="min-height:32px" onclick="L.post('/api/outbox/retry',{seq:${x.seq}}).then(pollStatus).then(caixaM)">Tentar de novo</button> <button class="b gh" style="min-height:32px" onclick="if(confirm('Descartar este envio? O registro continua neste computador, mas não vai para o sistema online.'))L.post('/api/outbox/discard',{seq:${x.seq}}).then(pollStatus).then(caixaM)">Descartar</button></span></div>`).join('')}`:''}
+  <div class="mb">${LOCAL?'<button class="b s" onclick="L.post(\'/api/sync\').then(()=>{pollStatus();loadProducts();loadPend();caixaM()}).catch(e=>toast(e.message,\'er\'))">↻ Sincronizar agora</button>':''}<button class="b s" onclick="printFech()">🖨️ Imprimir resumo</button><button class="b s" onclick="closeM()"><kbd>Esc</kbd> Fechar</button></div>`;
   window._cx=c;
   setTimeout(()=>{const v=$('#mvv');v&&v.focus()},30);
   M.key=e=>{if(e.key=='Enter'&&e.target.id!='mvt'){e.preventDefault();addMov()}};
@@ -633,10 +683,9 @@ async function caixaM(){
 async function addMov(){
   const v=r2(num($('#mvv').value));if(!(v>0))return toast('Informe o valor.','er');
   const t=$('#mvt').value,id=uid(),m={id,date:new Date().toISOString(),tipo:t,valor:v,desc:[$('#mvd').value.trim(),C.pdv].filter(Boolean).join(' · ')};
-  const {error}=await sb.from('caixa').insert({id,data:m,updated_at:m.date});
-  if(error)return toast('Não foi possível registrar: '+error.message,'er');
+  try{await API.mov(m)}catch(e){return toast('Não foi possível registrar: '+e.message,'er')}
   toast(TIPO[t]+' de '+R(v)+' registrado.');
-  if(t=='sangria'||t=='despesa'||t=='suprimento')printHtml(`<div class="cp"><div class="cn">${esc(EMP.n.toUpperCase())}</div><div class="cb2">${esc(TIPO[t].toUpperCase())}</div><div class="cs">${new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})} · ${esc(C.pdv)}</div><hr><div class="cr ct"><span>VALOR</span><span>${R(v)}</span></div>${m.desc?`<div>${esc(m.desc)}</div>`:''}<hr><br><div class="cs">_____________________________</div><div class="cs">Assinatura · ${esc(opName())}</div></div>`);
+  if(t=='sangria'||t=='despesa'||t=='suprimento')printSpec([{t:String(EMP.n).toUpperCase(),a:'c',b:1,s:2},{t:TIPO[t].toUpperCase(),a:'c',b:1},{t:new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})+' · '+C.pdv,a:'c'},{hr:1},{lr:['VALOR',R(v)],b:1,s:2},...(m.desc?[{t:m.desc}]:[]),{hr:1},{gap:2},{t:'_____________________________',a:'c'},{t:'Assinatura · '+opName(),a:'c'}]);
   caixaM();
 }
 async function checkAbertura(){
@@ -647,16 +696,15 @@ async function checkAbertura(){
 }
 async function abrirCx(){
   const v=r2(num($('#abv').value)||0),id=uid(),m={id,date:new Date().toISOString(),tipo:'abertura',valor:v,desc:C.pdv+' · '+opName()};
-  const {error}=await sb.from('caixa').insert({id,data:m,updated_at:m.date});
-  if(error)return toast('Não foi possível abrir: '+error.message,'er');
+  try{await API.mov(m)}catch(e){return toast('Não foi possível abrir: '+e.message,'er')}
   closeM();toast('Caixa aberto com '+R(v)+'.');
 }
 function printFech(){
-  const c=window._cx;if(!c)return;const L=(a,b)=>`<div class="cr"><span>${a}</span><b>${b}</b></div>`;
-  printHtml(`<div class="cp"><div class="cn">${esc(EMP.n.toUpperCase())}</div><div class="cb2" style="font-size:1.15em">RESUMO DO CAIXA</div><div class="cs">${new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})} · ${esc(C.pdv)}</div><hr>
-  ${L('Vendas',c.os.length)}${L('Faturamento',R(c.fat))}<hr>${Object.entries(c.pay).map(([k,v])=>L(esc(k)+' ('+v.n+')',R(v.v))).join('')}<hr>
-  ${L('Abertura',R(c.ab))}${L('+ Suprimentos',R(c.su))}${L('+ Vendas em dinheiro',R(c.din))}${L('- Sangrias',R(c.sa))}${L('- Despesas',R(c.de))}
-  <div class="cr ct"><span>NA GAVETA</span><span>${R(c.gav)}</span></div><hr><br><div class="cs">_____________________________</div><div class="cs">Conferido por</div></div>`);
+  const c=window._cx;if(!c)return;
+  printSpec([{t:String(EMP.n).toUpperCase(),a:'c',b:1,s:2},{t:'RESUMO DO CAIXA',a:'c',b:1},{t:new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})+' · '+C.pdv,a:'c'},{hr:1},
+    {lr:['Vendas',String(c.os.length)]},{lr:['Faturamento',R(c.fat)]},{hr:1},...Object.entries(c.pay).map(([k,v])=>({lr:[k+' ('+v.n+')',R(v.v)]})),{hr:1},
+    {lr:['Abertura',R(c.ab)]},{lr:['+ Suprimentos',R(c.su)]},{lr:['+ Vendas em dinheiro',R(c.din)]},{lr:['- Sangrias',R(c.sa)]},{lr:['- Despesas',R(c.de)]},
+    {lr:['NA GAVETA',R(c.gav)],b:1,s:2},{hr:1},{gap:2},{t:'_____________________________',a:'c'},{t:'Conferido por',a:'c'}]);
 }
 
 /* ===== ajustes e ajuda ===== */
@@ -666,6 +714,7 @@ function cfgM(){
   <div class="g2"><div><label>Nome do caixa</label><input id="c-pdv" value="${esc(C.pdv)}"></div><div><label>Operador (aparece no cupom)</label><input id="c-op" value="${esc(C.op)}" placeholder="${esc(opName())}"></div></div>
   <label class="ck"><input type="checkbox" id="c-auto" ${C.auto?'checked':''}> Imprimir cupom automaticamente ao finalizar</label>
   <label>Tamanho das letras do cupom: <b id="c-psv">${Math.round(C.ps*100)}%</b></label><input type="range" id="c-ps" min="70" max="150" step="5" value="${Math.round(C.ps*100)}" style="padding:0;border:0;background:none" oninput="$('#c-psv').textContent=this.value+'%'">
+  ${LOCAL?`<button class="b s" style="width:100%;margin-top:12px" onclick="prnM()">🖨️ Impressora direta (USB) · ${LS&&LS.prn&&LS.prn.mode=='escpos'?esc(LS.prn.name||'não escolhida'):'desligada'}</button>`:''}
   <h3 style="margin-top:16px;font-size:16px">⚖️ Etiqueta de balança (EAN-13)</h3>
   <label class="ck"><input type="checkbox" id="b-on" ${B.on?'checked':''}> Ler etiquetas da balança</label>
   <div class="g3"><div><label>Começa com</label><input id="b-pre" value="${esc(B.pre)}"></div><div><label>Código: posição</label><input id="b-ci" type="number" min="0" max="12" value="${B.ci}"></div><div><label>Código: dígitos</label><input id="b-cl" type="number" min="1" max="7" value="${B.cl}"></div>
@@ -678,6 +727,19 @@ function cfgM(){
     $('#b-r').innerHTML=!t?'':!s?'Não reconhecida como etiqueta (precisa ter 13 dígitos e começar com '+esc($('#b-pre').value)+').':s.miss?'Código <b>'+esc(s.miss)+'</b>: nenhum produto com esse código.':'✅ <b>'+esc(s.p.n)+'</b> · '+N(s.q)+' '+esc(s.p.u||'')+(s.tot!=null?' · '+R(s.tot):' · '+R(r2(s.q*s.p.p)))};
   const rdBal=()=>({on:$('#b-on').checked,pre:$('#b-pre').value.trim()||'2',ci:+$('#b-ci').value||0,cl:+$('#b-cl').value||4,vi:+$('#b-vi').value||0,vl:+$('#b-vl').value||5,dec:+$('#b-dec').value||0,tipo:$('#b-tipo').value});
   window.cfgOk=()=>{C.pdv=$('#c-pdv').value.trim()||'Caixa 1';C.op=$('#c-op').value.trim();C.auto=$('#c-auto').checked;C.ps=(+$('#c-ps').value||100)/100;C.bal=rdBal();saveC();closeM();shell();render();toast('Ajustes salvos.')};
+}
+async function prnM(){
+  let pr=[];try{pr=await L.get('/api/printers')}catch(e){}
+  const c=(LS&&LS.prn)||{};
+  openM(`<h3>🖨️ Impressora direta</h3><p class="mu">Imprime direto na Bematech pela USB, sem janela e com corte do papel. A impressora precisa estar no modo ESC/POS (veja o LEIA-ME).</p>
+  <label>Modo</label><select id="pm"><option value="escpos" ${c.mode=='escpos'?'selected':''}>Direto na impressora (ESC/POS)</option><option value="browser" ${c.mode!='escpos'?'selected':''}>Janela de impressão do navegador</option></select>
+  <label>Impressora do Windows</label><select id="pn">${pr.length?pr.map(n=>`<option ${n==c.name?'selected':''}>${esc(n)}</option>`).join(''):'<option value="">Nenhuma impressora encontrada</option>'}</select>
+  <div class="g2"><div><label>Colunas do papel</label><select id="pc">${[48,42,32].map(n=>`<option ${(+c.cols||48)==n?'selected':''}>${n}</option>`).join('')}</select></div><div><label>Acentos</label><select id="pa"><option value="1" ${c.ascii!==false?'selected':''}>Sem acentos (mais seguro)</option><option value="0" ${c.ascii===false?'selected':''}>Com acentos (página 850)</option></select></div></div>
+  <label class="ck"><input type="checkbox" id="pgv2" ${c.drawer?'checked':''}> Abrir a gaveta de dinheiro ao imprimir venda com dinheiro</label>
+  <div class="mb"><button class="b s" onclick="prnTest()">Imprimir teste</button><button class="b s" onclick="L.post('/api/gaveta').then(()=>toast('Gaveta acionada.')).catch(e=>toast(e.message,'er'))">Abrir gaveta</button><button class="b" onclick="prnOk()">Salvar</button></div>`,{cls:'wide'});
+  const rd=()=>({mode:$('#pm').value,name:$('#pn').value,cols:+$('#pc').value,ascii:$('#pa').value=='1',drawer:$('#pgv2').checked});
+  window.prnOk=async()=>{try{await L.post('/api/prn',rd());await pollStatus();closeM();toast('Impressora salva.')}catch(e){toast(e.message,'er')}};
+  window.prnTest=async()=>{try{await L.post('/api/prn',rd());await pollStatus();await printSpec([{t:String(EMP.n).toUpperCase(),a:'c',b:1,s:2},{t:'Teste de impressão',a:'c'},{hr:1},{lr:['Produto de teste 1 un x R$ 1,00','R$ 1,00']},{lr:['TOTAL','R$ 1,00'],b:1,s:2},{box:'TROCO: R$ 0,00'},{t:'Acentos: ação, café, pão, maçã',a:'c'}])}catch(e){toast(e.message,'er')}};
 }
 function helpM(){
   const k=[['Enter','Inclui o produto (ou abre o pagamento, se o campo estiver vazio)'],['3 * código','Quantidade antes do código. Também serve 0,350*código para peso'],['F1','Esta ajuda'],['F2','Ir para a busca'],['F3','Quantidade do próximo item ou alterar o item selecionado'],['F4','Pedidos do app para faturar'],['F6','Cliente e CPF na nota'],['F7','Desconto na venda'],['F8 / Delete','Cancelar o item selecionado'],['F9','Caixa: abertura, sangria, suprimento, resumo'],['F10','Pagamento'],['↑ ↓','Escolher item ou sugestão'],['+ / −','Aumentar ou diminuir a quantidade do item selecionado (com a busca vazia)'],['Esc','Fechar janela, limpar a busca ou cancelar a venda'],['No pagamento','F1 Dinheiro · F2 Pix · F3 Débito · F4 Crédito · Backspace remove o último']];
@@ -710,22 +772,47 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&user){loa
 addEventListener('beforeunload',e=>{if(Q.length){e.preventDefault();e.returnValue=''}});
 
 /* ===== cupom e impressão ===== */
-function cupomHtml(o,logo){
-  const dt=new Date((o.fat&&o.fat.date)||o.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
-  const L=(a,b,c='')=>`<div class="cr ${c}"><span>${a}</span><b>${b}</b></div>`,bal=o.canal=='balcao';
-  return `<div class="cp">${logo?`<img class="cl" src="${logo}" alt="">`:''}
-  <div class="cn">${esc(String(EMP.n).toUpperCase())}</div>${EMP.cnpj?`<div class="cs">CNPJ: ${esc(EMP.cnpj)}</div>`:''}<div class="cs">${esc(EMP.e)}</div><div class="cs">${esc(EMP.c)}${EMP.tel?' · '+esc(fmtTel(EMP.tel)):''}</div><hr>
-  <div class="cb2">${bal?'VENDA':'PEDIDO'} #${esc(o.id.slice(-4).toUpperCase())}</div><div class="cs">${dt}${o.fat?' · '+esc(o.fat.pdv):''}</div><hr>
-  ${o.cpf?`<div><b>CPF/CNPJ:</b> ${esc(fmtDoc(o.cpf))}</div>`:''}${o.cn&&o.cn!='Consumidor'?`<div><b>Cliente:</b> ${esc(o.cn)}</div>`:''}${!bal?`<div><b>Entrega:</b> ${esc(o.addr||'')}</div>`:''}${o.cpf||!bal||(o.cn&&o.cn!='Consumidor')?'<hr>':''}
-  ${(o.items||[]).map(i=>`<div class="ci">${esc(i.n)}</div>`+L(`${N(i.q)} ${esc(i.u)} x ${R(i.p)}`,R(i.t??r2(i.p*i.q)))).join('')}<hr>
-  ${L('Subtotal ('+(o.items||[]).length+' itens)',R(o.sub))}${o.desc?L('Desconto','- '+R(o.desc)):''}${o.taxa?L('Taxa de entrega'+(o.bairro?' ('+esc(o.bairro)+')':''),R(o.taxa)):''}
-  ${L('TOTAL',R(o.total),'ct')}
-  ${(o.pags||[]).map(g=>L(esc(g.f),R(g.r||g.v))).join('')}
-  ${o.troco>0?`<div class="cbig">TROCO: ${R(o.troco)}</div>`:''}
-  ${o.obs?`<div><b>Obs:</b> ${esc(o.obs)}</div>`:''}<hr>
-  ${o.fat&&o.fat.op?`<div class="cs">Operador: ${esc(o.fat.op)}</div>`:''}
-  <div class="cs" style="font-weight:800">NÃO É DOCUMENTO FISCAL</div>
-  <div class="cs">${String(EMP.msg||'').split('\n').map(esc).join('<br>')}</div></div>`;
+function cupomSpec(o){
+  const bal=o.canal=='balcao',dt=new Date((o.fat&&o.fat.date)||o.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}),S=[];
+  S.push({logo:1},{t:String(EMP.n).toUpperCase(),a:'c',b:1,s:2});
+  if(EMP.cnpj)S.push({t:'CNPJ: '+EMP.cnpj,a:'c'});
+  S.push({t:EMP.e||'',a:'c'},{t:(EMP.c||'')+(EMP.tel?' · '+fmtTel(EMP.tel):''),a:'c'},{hr:1},{t:(bal?'VENDA':'PEDIDO')+' #'+o.id.slice(-4).toUpperCase(),a:'c',b:1,s:2},{t:dt+(o.fat?' · '+o.fat.pdv:''),a:'c'},{hr:1});
+  let h=false;
+  if(o.cpf){S.push({t:'CPF/CNPJ: '+fmtDoc(o.cpf)});h=true}
+  if(o.cn&&o.cn!='Consumidor'){S.push({t:'Cliente: '+o.cn});h=true}
+  if(!bal){S.push({t:'Entrega: '+(o.addr||'')});h=true}
+  if(h)S.push({hr:1});
+  (o.items||[]).forEach(i=>S.push({t:i.n,b:1},{lr:[`${N(i.q)} ${i.u} x ${R(i.p)}`,R(i.t??r2(i.p*i.q))]}));
+  S.push({hr:1},{lr:['Subtotal ('+(o.items||[]).length+' itens)',R(o.sub)]});
+  if(o.desc)S.push({lr:['Desconto','- '+R(o.desc)]});
+  if(o.taxa)S.push({lr:['Taxa de entrega'+(o.bairro?' ('+o.bairro+')':''),R(o.taxa)]});
+  S.push({lr:['TOTAL',R(o.total)],b:1,s:2});
+  (o.pags||[]).forEach(g=>S.push({lr:[g.f,R(g.r||g.v)]}));
+  if(o.troco>0)S.push({box:'TROCO: '+R(o.troco)});
+  if(o.obs)S.push({t:'Obs: '+o.obs});
+  S.push({hr:1});
+  if(o.fat&&o.fat.op)S.push({t:'Operador: '+o.fat.op,a:'c'});
+  S.push({t:'NÃO É DOCUMENTO FISCAL',a:'c',b:1});
+  String(EMP.msg||'').split('\n').forEach(l=>l.trim()&&S.push({t:l,a:'c'}));
+  return S;
+}
+function specHtml(S,logo){
+  return '<div class="cp">'+S.map(x=>{
+    if(x.logo)return logo?`<img class="cl" src="${logo}" alt="">`:'';
+    if(x.hr)return '<hr>';
+    if(x.gap)return '<br>'.repeat(x.gap);
+    if(x.box)return `<div class="cbig">${esc(x.box)}</div>`;
+    const st=(x.b?'font-weight:800;':'')+(x.s==2?'font-size:1.4em;':'');
+    if(x.lr)return `<div class="cr" style="${st}"><span>${esc(x.lr[0])}</span><b>${esc(x.lr[1])}</b></div>`;
+    return `<div style="${st}${x.a=='c'?'text-align:center;':''}">${esc(x.t)}</div>`;
+  }).join('')+'</div>';
+}
+async function printSpec(S,o={}){
+  if(LOCAL&&LS&&LS.prn&&LS.prn.mode=='escpos'&&LS.prn.name){
+    try{await L.post('/api/print',{spec:S,drawer:!!o.drawer});return}catch(e){toast('Impressora: '+e.message+' Usando a janela de impressão.','wn')}
+  }
+  const logo=S.some(x=>x.logo)?await bwLogo(EMP.logo||'logo.png',EMP.th||165,EMP.lw||40):'';
+  return printHtml(specHtml(S,logo));
 }
 const bwCache={};
 function bwLogo(src,th,lw){
@@ -764,7 +851,7 @@ function printHtml(html){
   })).catch(()=>{});
   return pq;
 }
-async function printCupom(o){const logo=await bwLogo(EMP.logo||'logo.png',EMP.th||165,EMP.lw||40);return printHtml(cupomHtml(o,logo))}
+function printCupom(o){return printSpec(cupomSpec(o),{drawer:(o.pags||[]).some(g=>g.f=='Dinheiro')})}
 function reimprimir(){const o=load('pdvlast',null);if(!o)return toast('Nenhuma venda finalizada neste caixa ainda.');printCupom(o)}
 
 /* ===== Pix copia e cola + QR Code (mesmo padrão do app) ===== */
